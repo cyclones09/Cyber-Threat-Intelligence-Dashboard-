@@ -703,29 +703,56 @@
         <div class="map-card">
           <div class="ch"><span class="ct">Global Threat Origin Map</span><span class="ctag">LIVE · 90D</span></div>
           <div class="map-wrap" id="worldMap">
-            <!-- SVG world outline -->
-            <svg class="map-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0">
-              <!-- simplified continent outlines -->
-              <!-- North America -->
-              <path d="M80,80 L220,75 L240,110 L230,160 L200,190 L180,220 L150,240 L120,230 L90,200 L70,160 L60,120 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- South America -->
-              <path d="M160,260 L220,250 L240,280 L245,340 L230,390 L200,410 L170,400 L150,360 L145,310 L150,270 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- Europe -->
-              <path d="M420,60 L520,55 L530,90 L510,120 L480,130 L450,125 L430,110 L415,85 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- Africa -->
-              <path d="M430,150 L530,145 L550,200 L545,280 L520,330 L490,340 L460,325 L440,270 L430,210 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- Asia -->
-              <path d="M540,50 L820,45 L840,100 L830,170 L790,200 L720,210 L650,200 L600,180 L550,150 L535,100 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- Middle East -->
-              <path d="M550,150 L640,145 L650,185 L630,210 L590,215 L555,195 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
-              <!-- Australia -->
-              <path d="M720,290 L820,285 L840,330 L825,370 L790,380 L750,370 L725,340 Z" fill="#1a1a2e" stroke="#2e2e44" stroke-width="1"/>
+            <svg class="map-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%">
+              <defs>
+                <radialGradient id="oceanGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stop-color="#0a0f1e"/>
+                  <stop offset="100%" stop-color="#050508"/>
+                </radialGradient>
+              </defs>
+              <rect width="1000" height="500" fill="url(#oceanGrad)"/>
               <!-- Grid lines -->
-              <line x1="0" y1="250" x2="1000" y2="250" stroke="#1e1e2e" stroke-width="0.5" stroke-dasharray="4,8"/>
-              <line x1="500" y1="0" x2="500" y2="500" stroke="#1e1e2e" stroke-width="0.5" stroke-dasharray="4,8"/>
+              <line x1="0" y1="250" x2="1000" y2="250" stroke="#1a1a2e" stroke-width="0.8"/>
+              <line x1="500" y1="0" x2="500" y2="500" stroke="#1a1a2e" stroke-width="0.8"/>
+              <line x1="0" y1="139" x2="1000" y2="139" stroke="#1a1a2e" stroke-width="0.4" stroke-dasharray="4,8"/>
+              <line x1="0" y1="361" x2="1000" y2="361" stroke="#1a1a2e" stroke-width="0.4" stroke-dasharray="4,8"/>
+              <!-- North America -->
+              <path d="M33,52 L80,45 L130,55 L155,75 L152,100 L172,161 L210,195 L250,205 L262,185 L278,178 L310,148 L355,119 L340,90 L300,72 L260,58 L220,48 L150,44 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Greenland -->
+              <path d="M280,18 L320,15 L340,28 L330,45 L295,50 L270,38 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- Central America bump -->
+              <path d="M210,195 L225,210 L215,225 L200,215 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- South America -->
+              <path d="M230,225 L270,215 L310,218 L360,225 L395,240 L410,270 L408,310 L395,350 L370,390 L340,405 L310,400 L285,375 L268,340 L255,300 L248,265 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Europe -->
+              <path d="M450,148 L465,100 L490,80 L510,65 L535,58 L565,55 L595,62 L615,80 L618,105 L600,120 L610,135 L595,148 L570,155 L540,158 L510,152 L480,155 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Scandinavia -->
+              <path d="M490,55 L505,30 L520,25 L540,30 L548,50 L535,58 L510,65 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- UK -->
+              <path d="M448,88 L458,78 L465,88 L458,100 L448,96 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- Africa -->
+              <path d="M450,155 L480,152 L510,152 L540,158 L580,155 L618,148 L638,165 L648,195 L652,230 L645,270 L635,310 L615,340 L590,360 L560,368 L530,362 L505,345 L485,315 L470,280 L458,245 L448,210 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Madagascar -->
+              <path d="M658,290 L665,275 L672,290 L668,310 L658,305 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- Middle East -->
+              <path d="M618,148 L648,145 L672,155 L678,175 L665,195 L648,195 L638,165 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Asia main -->
+              <path d="M600,62 L650,50 L720,42 L800,38 L870,42 L920,55 L955,72 L958,100 L940,125 L900,140 L870,148 L840,155 L800,162 L770,168 L740,175 L710,178 L688,172 L672,155 L648,145 L618,148 L610,135 L615,105 L595,90 L610,72 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Indian subcontinent -->
+              <path d="M672,155 L700,155 L720,162 L732,178 L728,210 L718,232 L705,238 L692,225 L682,205 L675,180 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- SE Asia peninsula -->
+              <path d="M760,175 L785,185 L792,210 L780,228 L765,222 L758,200 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- Japan -->
+              <path d="M875,118 L885,110 L895,118 L890,132 L878,130 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- Australia -->
+              <path d="M780,288 L825,278 L878,280 L918,292 L932,318 L928,348 L910,368 L875,375 L840,368 L808,350 L790,325 L780,302 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
+              <!-- New Zealand -->
+              <path d="M948,368 L955,355 L962,365 L956,378 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
+              <!-- Russia far east -->
+              <path d="M870,42 L930,28 L968,35 L975,55 L955,72 L920,55 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
             </svg>
-            <!-- Attack origin dots — positioned as % of map -->
-            <div id="mapDots"></div>
+            <div id="mapDots" style="position:absolute;inset:0"></div>
+          </div>
           </div>
           <div class="map-legend">
             <div class="map-legend-item"><div class="map-legend-dot" style="background:var(--crit)"></div>Critical (40K+)</div>
@@ -914,7 +941,10 @@ const SECTOR_DATA = [
   { name:'Media',        sub:'News, publishing', tier:3, count:8, delta:'+1', pct:1, color:'#ff6600' },
 ];
 
-ty-exploit','zero-day'] },
+const FEED = [
+  { n:1, hl:'CISA Adds Three Known Exploited Vulnerabilities to KEV Catalog', src:'cisa.gov', slug:'cisa-kev-fortios-ivanti-coldfusion-2026-05-27', time:'6h ago', sev:'critical', tags:['vulnerability','exploit'], excerpt:'Three critical flaws added to KEV: FortiOS RCE (CVSS 9.8), Ivanti Connect Secure path traversal, and Adobe ColdFusion deserialization. All are actively exploited in the wild.', industries:['government','finance','defense'], threatTypes:['zero-day','vulnerability-exploit'] },
+  { n:2, hl:'Romanian National Sentenced to 4+ Years for Hacking Oregon Government Systems', src:'therecord.media', slug:'romanian-hacker-oregon-government-sentencing-2026-05-27', time:'33m ago', sev:'high', tags:['apt','breach'], excerpt:'Dragomir was extradited from Romania to face charges of unauthorized access to Oregon state IT systems and exfiltrating sensitive citizen records over 14 months.', industries:['government'], threatTypes:['data-breach','credential-theft'] },
+  { n:3, hl:'AI-Assisted Exploit Development Outpaces Defender Detection Windows', src:'darkreading.com', slug:'ai-exploit-development-scanner-detection-2026-05-27', time:'2h ago', sev:'high', tags:['vulnerability','exploit'], excerpt:'Threat actors using LLM-assisted tooling are producing functional exploits for newly disclosed CVEs within hours of disclosure, shrinking the patch-before-exploit window to near zero.', industries:['technology','finance'], threatTypes:['vulnerability-exploit','zero-day'] },
   { n:4, hl:'Latin American Cybercriminals Breach Uruguayan Government — 5.8M Records Exposed', src:'darkreading.com', slug:'latam-cybercriminals-uruguay-government-data-breach-2026-05-27', time:'2h ago', sev:'high', tags:['breach','exploit'], excerpt:'A purported leak exposing 5.8M Uruguayan citizen records is the latest in a wave of LATAM government-targeted campaigns leveraging unpatched web application vulnerabilities.', industries:['government'], threatTypes:['data-breach','vulnerability-exploit'] },
   { n:5, hl:'LockBit 3.0 Affiliate Targets Energy Sector with Novel EDR-Bypass Dropper', src:'SOC Defenders', slug:'lockbit-energy-edr-bypass-dropper-2026-05-27', time:'4h ago', sev:'critical', tags:['ransomware','malware'], excerpt:'A new LockBit affiliate dropper uses process hollowing against legitimate Windows services to evade EDR telemetry. Targets SCADA-adjacent Windows servers in energy sector networks.', industries:['energy','manufacturing'], threatTypes:['ransomware','iot-ot'] },
   { n:6, hl:'Inside a 47-Day APT Dwell: Anatomy of a Financial Sector Intrusion', src:'socdefenders.ai', slug:'apt-47-day-dwell-financial-sector-anatomy-2026-05-27', time:'5h ago', sev:'medium', tags:['apt','breach'], excerpt:'Analysis of a financial sector intrusion covering credential harvesting, lateral movement via SMB, and staged exfiltration through encrypted DNS tunneling — a classic APT29 playbook.', industries:['finance'], threatTypes:['apt','credential-theft','data-breach'] },
@@ -973,13 +1003,7 @@ let fSev='all',fType='all',fInd='all';
 function setSev(b,v){document.querySelectorAll('[data-sev]').forEach(x=>x.classList.remove('on','cr','hi','me'));b.classList.add('on');if(v==='critical')b.classList.add('cr');if(v==='high')b.classList.add('hi');if(v==='medium')b.classList.add('me');fSev=v;pg=1;rebuildTable();}
 function setType(b,v){document.querySelectorAll('[data-tt]').forEach(x=>x.classList.remove('on'));b.classList.add('on');fType=v;pg=1;rebuildTable();}
 function setInd(b,v){document.querySelectorAll('[data-ind]').forEach(x=>x.classList.remove('on'));b.classList.add('on');fInd=v;pg=1;rebuildTable();}
-function setThreatCat(cat){
-  document.querySelectorAll('[id^="tc-"]').forEach(el=>{el.style.borderColor='';el.style.color='';});
-  document.querySelectorAll('[data-tt]').forEach(x=>x.classList.remove('on'));
-  const btn=document.querySelector(`[data-tt="${cat}"]`);
-  if(btn){btn.classList.add('on');fType=cat;}else fType=cat;
-  pg=1;rebuildTable();
-}
+
 
 // ── CHARTS ──
 Chart.defaults.color='#5a5a7a';
@@ -1244,20 +1268,21 @@ function closeDr(){document.getElementById('ov').classList.remove('open');docume
 //  OPENCTI-STYLE DATA
 // ═══════════════════════════════════════════════════════════════════
 
-// World map threat origins — [label, top%, left%, count, severity, color]
+// World map threat origins — [label, lon, lat, count, severity, color]
+// Pixel formula: x=(lon+180)/360*100%, y=(90-lat)/180*100%
 const MAP_ORIGINS = [
-  ['United States',  '38%', '17%', 34000, 'critical', '#ff0044'],
-  ['Eastern Europe', '28%', '50%', 28000, 'critical', '#ff0044'],
-  ['China',          '32%', '76%', 18000, 'high',     '#ff6600'],
-  ['Brazil',         '62%', '25%', 10000, 'high',     '#ff6600'],
-  ['Iran',           '40%', '60%',  6000, 'high',     '#ff6600'],
-  ['India',          '42%', '72%',  4000, 'medium',   '#ffc300'],
-  ['Nigeria',        '55%', '48%',  3000, 'medium',   '#ffc300'],
-  ['North Korea',    '30%', '79%',  5500, 'high',     '#ff6600'],
-  ['Turkey',         '33%', '57%',  2800, 'medium',   '#ffc300'],
-  ['Colombia',       '58%', '22%',  1200, 'low',      '#00ff88'],
-  ['Germany',        '27%', '47%',  2100, 'medium',   '#ffc300'],
-  ['Ukraine',        '28%', '55%',  4400, 'high',     '#ff6600'],
+  ['United States',  -95,  38, 34000, 'critical', '#ff0044'],
+  ['Eastern Europe',  32,  50, 28000, 'critical', '#ff0044'],
+  ['China',          105,  35, 18000, 'high',     '#ff6600'],
+  ['Brazil',         -52, -10, 10000, 'high',     '#ff6600'],
+  ['Iran',            54,  32,  6000, 'high',     '#ff6600'],
+  ['India',           79,  22,  4000, 'medium',   '#ffc300'],
+  ['Nigeria',          8,   9,  3000, 'medium',   '#ffc300'],
+  ['North Korea',    127,  40,  5500, 'high',     '#ff6600'],
+  ['Turkey',          35,  39,  2800, 'medium',   '#ffc300'],
+  ['Colombia',       -74,   4,  1200, 'low',      '#00ff88'],
+  ['Ukraine',         32,  49,  4400, 'high',     '#ff6600'],
+  ['Russia',          60,  62,  7200, 'critical', '#ff0044'],
 ];
 
 // Label treemap data — [label, count, bg color]
@@ -1301,17 +1326,20 @@ const TOP_ENTITIES = [
 // ── RENDER WORLD MAP DOTS ──
 const mapWrap = document.getElementById('mapDots');
 if(mapWrap){
-  MAP_ORIGINS.forEach(([label,top,left,count,sev,color])=>{
-    const size = Math.max(8, Math.min(36, Math.sqrt(count/1000)*6));
+  MAP_ORIGINS.forEach(([label,lon,lat,count,sev,color])=>{
+    const left = ((lon + 180) / 360 * 100).toFixed(2) + '%';
+    const top  = ((90 - lat) / 180 * 100).toFixed(2) + '%';
+    const size = Math.max(10, Math.min(40, Math.sqrt(count/800)*5));
     const d = document.createElement('div');
     d.className = 'map-dot';
-    d.setAttribute('data-label', label+': '+count.toLocaleString());
-    d.style.cssText = `top:${top};left:${left};width:${size}px;height:${size}px;background:${color};opacity:0.75;box-shadow:0 0 ${size/2}px ${color}55;`;
+    d.setAttribute('data-label', label + ': ' + count.toLocaleString() + ' IOCs');
+    d.style.cssText = `position:absolute;top:${top};left:${left};width:${size}px;height:${size}px;background:${color};border-radius:50%;transform:translate(-50%,-50%);opacity:0.85;box-shadow:0 0 ${size}px ${color}66;cursor:pointer;transition:all .2s;z-index:2;`;
+    // tooltip
+    d.title = label + ': ' + count.toLocaleString() + ' IOCs';
     mapWrap.appendChild(d);
     // pulse ring
     const ring = document.createElement('div');
-    ring.style.cssText = `position:absolute;top:50%;left:${left};transform:translate(-50%,-50%);width:${size*2.5}px;height:${size*2.5}px;border-radius:50%;border:1px solid ${color};opacity:0;animation:ring-pulse 3s ${Math.random()*2}s infinite`;
-    ring.style.pointerEvents = 'none';
+    ring.style.cssText = `position:absolute;top:${top};left:${left};width:${size*3}px;height:${size*3}px;border-radius:50%;border:1.5px solid ${color};transform:translate(-50%,-50%);animation:ring-pulse 2.5s ${(Math.random()*2).toFixed(1)}s infinite;pointer-events:none;z-index:1;`;
     mapWrap.appendChild(ring);
   });
 }
