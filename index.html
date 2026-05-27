@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOC Defenders — CTI Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── SCHEMA.JSON taxonomy: 16 threat types · 13 industries · 4 severity levels ─ */
+    :root {
+      --bg-base:    #050508;
+      --bg-card:    #0d0d14;
+      --bg-card2:   #111119;
+      --border:     #1e1e2e;
+      --accent:     #00ff88;
+      --accent2:    #00c9ff;
+      --crit:       #ff0044;
+      --high:       #ff6600;
+      --med:        #ffc300;
+      --low:        #00ff88;
+      --tp:         #e8e8f0;
+      --tm:         #5a5a7a;
+      --td:         #2e2e44;
+      --mono:       'Share Tech Mono', monospace;
+      --ui:         'Rajdhani', sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{background:var(--bg-base);color:var(--tp);font-family:var(--ui);font-size:15px;min-height:100vh;overflow-x:hidden}
+    body::before{content:'';position:fixed;inset:0;z-index:9999;pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.06) 2px,rgba(0,0,0,0.06) 4px)}
+
+    /* ─── LAYOUT ─── */
+    .pg{display:grid;grid-template-columns:230px 1fr;grid-template-rows:auto 1fr;min-height:100vh}
+
+    /* ─── SIDEBAR ─── */
+    .sb{grid-row:1/-1;background:var(--bg-card);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow:hidden}
+    .sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+    .sb-icon{width:34px;height:34px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .sb-icon svg{width:18px;height:18px}
+    .sb-name{font-size:13px;font-weight:700;letter-spacing:1.5px;line-height:1.2}
+    .sb-ver{font-size:9px;color:var(--tm);letter-spacing:2px;font-family:var(--mono)}
+    .sb-nav{padding:10px 0;flex:1;overflow-y:auto}
+    .ng{font-size:9px;letter-spacing:2.5px;color:var(--tm);padding:10px 16px 3px;font-family:var(--mono);text-transform:uppercase}
+    .ni{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--tm);font-size:13px;font-weight:600;letter-spacing:.5px;border-left:2px solid transparent;text-transform:uppercase;transition:all .15s}
+    .ni:hover{color:var(--tp);background:rgba(255,255,255,.03)}
+    .ni.on{color:var(--accent);border-left-color:var(--accent);background:rgba(0,255,136,.05)}
+    .ni svg{width:15px;height:15px;opacity:.7;flex-shrink:0}
+    .nb{margin-left:auto;background:var(--crit);color:#fff;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;font-weight:700}
+    .sb-foot{border-top:1px solid var(--border);padding:12px 16px}
+    .sh{font-family:var(--mono);font-size:10px;color:var(--tm);line-height:1.9}
+    .hd{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;animation:pd 2s infinite}
+    .hd.ok{background:var(--accent)}.hd.warn{background:var(--med)}.hd.err{background:var(--crit)}
+    @keyframes pd{0%,100%{opacity:1}50%{opacity:.25}}
+
+    /* ─── TOPBAR ─── */
+    .tb{grid-column:2;background:var(--bg-card);border-bottom:1px solid var(--border);padding:0 24px;height:60px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100}
+    .tb-title{font-size:15px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+    .tb-path{font-family:var(--mono);font-size:10px;color:var(--tm)}
+    .tl-badge{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:5px;border:1px solid;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer}
+    .tl-badge.elevated{border-color:var(--high);color:var(--high);background:rgba(255,102,0,.08)}
+    .tl-badge.critical{border-color:var(--crit);color:var(--crit);background:rgba(255,0,68,.08);animation:bb 1.5s infinite}
+    .tl-badge.guarded{border-color:var(--med);color:var(--med);background:rgba(255,195,0,.08)}
+    @keyframes bb{0%,100%{box-shadow:0 0 0 0 rgba(255,0,68,0)}50%{box-shadow:0 0 8px 2px rgba(255,0,68,.3)}}
+    .td-dot{width:7px;height:7px;border-radius:50%;background:currentColor;animation:pd 1.5s infinite}
+    .clk{margin-left:auto;text-align:right;font-family:var(--mono)}
+    .clk-t{font-size:18px;color:var(--accent);letter-spacing:2px}
+    .clk-d{font-size:10px;color:var(--tm);letter-spacing:1px}
+
+    /* ─── TAXONOMY FILTER BAR ─── */
+    .fbar{padding:12px 24px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-bottom:1px solid var(--border);background:rgba(0,0,0,.25)}
+    .fl{font-size:9px;font-family:var(--mono);color:var(--tm);letter-spacing:1.5px;text-transform:uppercase;margin-right:3px;white-space:nowrap}
+    .fp{padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--tm);font-family:var(--ui);font-size:11px;font-weight:600;letter-spacing:.3px;border-radius:4px;cursor:pointer;transition:all .15s;text-transform:uppercase;white-space:nowrap}
+    .fp:hover{border-color:var(--accent);color:var(--tp)}
+    .fp.on{background:var(--accent);border-color:var(--accent);color:#000;font-weight:700}
+    .fp.cr.on{background:var(--crit);border-color:var(--crit);color:#fff}
+    .fp.hi.on{background:var(--high);border-color:var(--high);color:#fff}
+    .fp.me.on{background:var(--med);border-color:var(--med);color:#000}
+    .fs{width:1px;height:18px;background:var(--border);margin:0 3px;flex-shrink:0}
+
+    /* ─── MAIN ─── */
+    .mc{grid-column:2;padding:22px 24px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;max-height:calc(100vh - 60px)}
+
+    /* ─── SECTION HEADING ─── */
+    .sh2{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--tm);display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .sh2::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--border),transparent)}
+
+    /* ─── DAILY BRIEFING PANEL ─── */
+    .briefing{display:grid;grid-template-columns:1fr 320px;gap:16px}
+    .brief-main{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden;position:relative}
+    .brief-main::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--crit),var(--high),var(--med))}
+    .brief-header{padding:16px 20px 12px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;gap:14px}
+    .brief-date-block{text-align:center;background:var(--bg-base);border:1px solid var(--border);border-radius:8px;padding:8px 14px;flex-shrink:0}
+    .brief-day{font-size:26px;font-family:var(--mono);color:var(--crit);line-height:1;font-weight:700}
+    .brief-month{font-size:10px;color:var(--tm);letter-spacing:2px;font-family:var(--mono)}
+    .brief-title{font-size:17px;font-weight:700;color:var(--tp);line-height:1.3;margin-bottom:5px}
+    .brief-slug{font-size:11px;font-family:var(--mono);color:var(--accent2)}
+    .brief-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+    .brief-body{padding:16px 20px;font-size:13px;color:var(--tm);line-height:1.65}
+    .brief-body strong{color:var(--tp)}
+    .threat-strip{border-top:1px solid var(--border)}
+    .threat-row{display:flex;align-items:flex-start;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+    .threat-row:hover{background:rgba(0,255,136,.03)}
+    .threat-row:last-child{border-bottom:none}
+    .threat-num{font-family:var(--mono);font-size:10px;color:var(--tm);width:18px;flex-shrink:0;padding-top:2px}
+    .threat-info{flex:1;min-width:0}
+    .threat-name{font-size:13px;font-weight:700;color:var(--tp);margin-bottom:3px}
+    .threat-desc{font-size:12px;color:var(--tm);line-height:1.4}
+    .threat-meta{display:flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+
+    /* ─── ACTION CHECKLIST ─── */
+    .checklist-card{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .cl-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+    .cl-title{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tp)}
+    .cl-prog{font-family:var(--mono);font-size:10px;color:var(--accent)}
+    .cl-body{padding:12px 16px}
+    .cl-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer}
+    .cl-item:last-child{border-bottom:none}
+    .cl-cb{width:16px;height:16px;border:1px solid var(--border);border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;transition:all .15s;background:transparent}
+    .cl-cb.checked{background:var(--accent);border-color:var(--accent)}
+    .cl-cb.checked::after{content:'✓';font-size:10px;color:#000;font-weight:700}
+    .cl-text{font-size:12px;color:var(--tm);line-height:1.4;transition:color .15s}
+    .cl-item.done .cl-text{text-decoration:line-through;color:var(--td)}
+    .cl-urgency{font-family:var(--mono);font-size:9px;padding:1px 5px;border-radius:3px;border:1px solid;flex-shrink:0;margin-top:2px;white-space:nowrap}
+    .cl-urgency.u{border-color:rgba(255,0,68,.4);color:var(--crit)}
+    .cl-urgency.h{border-color:rgba(255,102,0,.4);color:var(--high)}
+    .cl-urgency.n{border-color:var(--border);color:var(--tm)}
+
+    /* ─── KPI CARDS ─── */
+    .kpi-g{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .kc{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;transition:border-color .2s;animation:fsi .4s ease both}
+    .kc::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+    .kc.i::before{background:linear-gradient(90deg,var(--accent2),transparent)}
+    .kc.b::before{background:linear-gradient(90deg,var(--crit),transparent)}
+    .kc.f::before{background:linear-gradient(90deg,var(--med),transparent)}
+    .kc.p::before{background:linear-gradient(90deg,var(--high),transparent)}
+    .kc:hover{border-color:rgba(0,255,136,.2)}
+    @keyframes fsi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .kc:nth-child(1){animation-delay:.05s}.kc:nth-child(2){animation-delay:.1s}.kc:nth-child(3){animation-delay:.15s}.kc:nth-child(4){animation-delay:.2s}
+    .kl{font-size:9px;font-family:var(--mono);color:var(--tm);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+    .kv{font-size:30px;font-weight:700;line-height:1;font-family:var(--mono);letter-spacing:-1px}
+    .kc.i .kv{color:var(--accent2)}.kc.b .kv{color:var(--crit)}.kc.f .kv{color:var(--med)}.kc.p .kv{color:var(--high)}
+    .ks{margin-top:7px;font-size:11px;color:var(--tm);display:flex;align-items:center;gap:5px}
+    .kd{font-family:var(--mono);font-size:11px;font-weight:700}
+    .kd.up{color:var(--crit)}.kd.dn{color:var(--accent)}
+    .kspk{position:absolute;bottom:0;right:0;width:90px;height:36px;opacity:.18}
+
+    /* ─── CHARTS ─── */
+    .cg1{display:grid;grid-template-columns:2fr 1fr;gap:14px}
+    .cg2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .cc{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;animation:fsi .5s .2s ease both}
+    .ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .ct{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--tp)}
+    .ctag{font-family:var(--mono);font-size:9px;padding:2px 7px;border:1px solid var(--border);border-radius:3px;color:var(--tm);letter-spacing:1px}
+
+    /* ─── SECTOR CARDS ─── */
+    .sg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .sc{background:var(--bg-card2);border:1px solid var(--border);border-radius:8px;padding:12px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .15s;animation:fsi .4s ease both}
+    .sc:hover{border-color:rgba(0,255,136,.3);transform:translateY(-1px)}
+    .sn{font-size:13px;font-weight:700;color:var(--tp);margin-bottom:1px}
+    .ss{font-size:10px;color:var(--tm);margin-bottom:8px;font-family:var(--mono)}
+    .sv{font-size:20px;font-weight:700;font-family:var(--mono);color:var(--accent2)}
+    .sl{font-size:10px;color:var(--tm);font-family:var(--mono)}
+    .sd{position:absolute;top:10px;right:10px;font-family:var(--mono);font-size:10px;color:var(--accent);font-weight:700}
+    .stier{display:inline-block;font-size:9px;font-family:var(--mono);padding:1px 5px;border-radius:3px;border:1px solid var(--border);color:var(--tm);margin-bottom:5px;letter-spacing:1px}
+    .sbar{height:3px;border-radius:2px;margin-top:8px;background:var(--border);overflow:hidden}
+    .sbar-f{height:100%;border-radius:2px;transition:width 1s ease}
+
+    /* ─── CVE TRACKER ─── */
+    .cve-g{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    .cve-card{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+    .cve-card:hover{border-color:rgba(255,0,68,.3);transform:translateY(-1px)}
+    .cve-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+    .cve-card.cr::before{background:var(--crit)}.cve-card.hi::before{background:var(--high)}.cve-card.me::before{background:var(--med)}
+    .cve-id{font-family:var(--mono);font-size:12px;color:var(--crit);font-weight:700;margin-bottom:4px}
+    .cve-title{font-size:13px;font-weight:600;color:var(--tp);margin-bottom:6px;line-height:1.3}
+    .cve-row{display:flex;gap:8px;align-items:center;margin-bottom:4px;flex-wrap:wrap}
+    .cvss{font-family:var(--mono);font-size:11px;font-weight:700}
+    .cvss.cr{color:var(--crit)}.cvss.hi{color:var(--high)}.cvss.me{color:var(--med)}
+    .cve-meta{font-family:var(--mono);font-size:10px;color:var(--tm)}
+    .cve-bar{height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden}
+    .cve-bar-f{height:100%;border-radius:2px;transition:width 1s ease}
+
+    /* ─── THREAT TABLE ─── */
+    .tc{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+    .th2{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border)}
+    .tt2{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+    .ts{margin-left:auto;background:var(--bg-base);border:1px solid var(--border);border-radius:5px;padding:5px 10px;color:var(--tp);font-family:var(--mono);font-size:11px;width:200px;outline:none;transition:border-color .2s}
+    .ts:focus{border-color:var(--accent)}
+    .ts::placeholder{color:var(--tm)}
+    .tw{overflow-x:auto}
+    table{width:100%;border-collapse:collapse}
+    thead th{padding:9px 14px;text-align:left;font-size:9px;font-family:var(--mono);letter-spacing:2px;color:var(--tm);text-transform:uppercase;background:var(--bg-base);border-bottom:1px solid var(--border);cursor:pointer;white-space:nowrap;user-select:none}
+    thead th:hover{color:var(--accent)}
+    thead th.sorted .sa{opacity:1;color:var(--accent)}
+    .sa{margin-left:3px;opacity:.4}
+    tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
+    tbody tr:hover{background:rgba(0,255,136,.03)}
+    td{padding:10px 14px;font-size:13px;white-space:nowrap}
+    td.ind{font-family:var(--mono);font-size:11px;color:var(--accent2);max-width:200px;overflow:hidden;text-overflow:ellipsis}
+    td.dt{font-family:var(--mono);font-size:10px;color:var(--tm)}
+    td.src{font-size:11px;color:var(--tm)}
+    .sb2{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-family:var(--mono);font-weight:700;letter-spacing:1px;text-transform:uppercase}
+    .sb2.critical{background:rgba(255,0,68,.15);color:var(--crit);border:1px solid rgba(255,0,68,.3)}
+    .sb2.high{background:rgba(255,102,0,.15);color:var(--high);border:1px solid rgba(255,102,0,.3)}
+    .sb2.medium{background:rgba(255,195,0,.15);color:var(--med);border:1px solid rgba(255,195,0,.3)}
+    .sb2.low{background:rgba(0,255,136,.1);color:var(--accent);border:1px solid rgba(0,255,136,.2)}
+    .tyb{display:inline-block;padding:2px 7px;border-radius:3px;font-size:9px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;border:1px solid var(--border);color:var(--tm)}
+    .tf{padding:10px 18px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--tm)}
+    .pb{padding:3px 7px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--tm);font-family:var(--mono);font-size:10px;cursor:pointer;transition:all .15s}
+    .pb:hover,.pb.on{border-color:var(--accent);color:var(--accent)}
+
+    /* ─── FEED ─── */
+    .fg{display:grid;grid-template-columns:1fr 320px;gap:14px}
+    .fl2{display:flex;flex-direction:column;gap:9px}
+    .fi{background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:12px 14px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+    .fi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+    .fi.critical::before{background:var(--crit)}.fi.high::before{background:var(--high)}.fi.medium::before{background:var(--med)}.fi.low::before{background:var(--accent)}
+    .fi:hover{border-color:rgba(0,255,136,.2);background:var(--bg-card2)}
+    .fi-num{font-family:var(--mono);font-size:10px;color:var(--tm);margin-bottom:3px}
+    .fi-hl{font-size:14px;font-weight:600;color:var(--tp);line-height:1.3;margin-bottom:5px}
+    .fi-meta{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:10px;color:var(--tm);flex-wrap:wrap}
+    .ftag{padding:1px 5px;border-radius:3px;border:1px solid;font-size:9px;font-family:var(--mono);letter-spacing:.5px}
+    .ftag.ransomware{border-color:rgba(255,0,68,.4);color:var(--crit)}
+    .ftag.exploit{border-color:rgba(255,0,68,.4);color:var(--crit)}
+    .ftag.apt{border-color:rgba(255,102,0,.4);color:var(--high)}
+    .ftag.breach{border-color:rgba(255,102,0,.4);color:var(--high)}
+    .ftag.supply-chain{border-color:rgba(255,195,0,.4);color:var(--med)}
+    .ftag.vulnerability{border-color:rgba(255,195,0,.4);color:var(--med)}
+    .ftag.phishing{border-color:rgba(0,201,255,.4);color:var(--accent2)}
+    .ftag.malware{border-color:rgba(0,201,255,.4);color:var(--accent2)}
+    .fi-ex{font-size:11px;color:var(--tm);margin-top:5px;line-height:1.4}
+
+    /* ─── SIDE PANELS ─── */
+    .pr{display:flex;flex-direction:column;gap:12px}
+    .mc2{background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+    .mt{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--tm);margin-bottom:10px;font-family:var(--mono)}
+    .br-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+    .br-l{font-family:var(--mono);font-size:10px;color:var(--tm);width:78px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis}
+    .br-t{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+    .br-f{height:100%;border-radius:3px;background:var(--accent2);transition:width 1s ease}
+    .br-v{font-family:var(--mono);font-size:10px;color:var(--tm);width:28px;text-align:right}
+
+    /* architecture pipeline */
+    .pipe{display:flex;flex-direction:column;gap:0}
+    .pipe-step{display:flex;align-items:flex-start;gap:10px;padding:8px 0;position:relative}
+    .pipe-step::after{content:'';position:absolute;left:11px;top:28px;bottom:-8px;width:1px;background:var(--border)}
+    .pipe-step:last-child::after{display:none}
+    .pipe-dot{width:22px;height:22px;border-radius:50%;border:1px solid;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:var(--mono);font-size:9px;font-weight:700;z-index:1;background:var(--bg-card)}
+    .pipe-dot.ok{border-color:var(--accent);color:var(--accent)}
+    .pipe-dot.run{border-color:var(--accent2);color:var(--accent2);animation:pd .8s infinite}
+    .pipe-dot.wait{border-color:var(--tm);color:var(--tm)}
+    .pipe-info{flex:1}
+    .pipe-name{font-size:12px;font-weight:600;color:var(--tp);margin-bottom:1px}
+    .pipe-desc{font-size:10px;color:var(--tm);font-family:var(--mono)}
+
+    /* maturity */
+    .mi{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--border)}
+    .mi:last-child{border-bottom:none;padding-bottom:0}
+    .ml{width:26px;height:26px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700;flex-shrink:0}
+    .l1{background:rgba(0,255,136,.1);color:var(--accent);border:1px solid rgba(0,255,136,.25)}
+    .l2{background:rgba(255,195,0,.1);color:var(--med);border:1px solid rgba(255,195,0,.25)}
+    .l3{background:rgba(0,201,255,.1);color:var(--accent2);border:1px solid rgba(0,201,255,.25)}
+    .l4{background:rgba(255,0,68,.1);color:var(--crit);border:1px solid rgba(255,0,68,.25)}
+    .mi-info{flex:1}
+    .mi-n{font-size:12px;font-weight:700;color:var(--tp);margin-bottom:1px}
+    .mi-d{font-size:10px;color:var(--tm);line-height:1.3}
+
+    /* ─── DRAWER ─── */
+    .ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .2s}
+    .ov.open{opacity:1;pointer-events:all}
+    .dr{position:fixed;right:0;top:0;bottom:0;z-index:201;width:440px;background:var(--bg-card);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+    .dr.open{transform:translateX(0)}
+    .dr-top{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+    .dr-cl{background:transparent;border:1px solid var(--border);color:var(--tm);width:26px;height:26px;border-radius:5px;font-size:14px;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;align-items:center;justify-content:center}
+    .dr-cl:hover{border-color:var(--crit);color:var(--crit)}
+    .dr-ind{font-family:var(--mono);font-size:12px;color:var(--accent2);word-break:break-all}
+    .dr-body{flex:1;overflow-y:auto;padding:18px 22px}
+    .ds{margin-bottom:20px}
+    .dst{font-size:9px;font-family:var(--mono);letter-spacing:2px;text-transform:uppercase;color:var(--tm);margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:5px}
+    .dr-row{display:flex;gap:9px;font-size:12px;margin-bottom:6px}
+    .dr-row .k{color:var(--tm);font-family:var(--mono);width:110px;flex-shrink:0}
+    .dr-row .v{color:var(--tp);font-weight:500}
+    .cc2{display:inline-block;background:rgba(255,0,68,.1);border:1px solid rgba(255,0,68,.3);color:var(--crit);font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:3px;margin:2px}
+    .mc3{display:inline-block;background:rgba(0,201,255,.08);border:1px solid rgba(0,201,255,.25);color:var(--accent2);font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:3px;margin:2px}
+    .mi2{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--tm);margin-bottom:5px;line-height:1.4}
+    .mi2::before{content:'→';color:var(--accent);flex-shrink:0;font-family:var(--mono)}
+
+    /* ─── SCROLLBARS ─── */
+    ::-webkit-scrollbar{width:4px;height:4px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+    ::-webkit-scrollbar-thumb:hover{background:var(--tm)}
+
+    /* ─── RESPONSIVE ─── */
+    @media(max-width:1100px){
+      .pg{grid-template-columns:1fr}
+      .sb{display:none}
+      .tb,.mc{grid-column:1}
+      .kpi-g{grid-template-columns:repeat(2,1fr)}
+      .sg{grid-template-columns:repeat(2,1fr)}
+      .cg1,.cg2,.fg,.briefing{grid-template-columns:1fr}
+      .cve-g{grid-template-columns:repeat(2,1fr)}
+      .dr{width:100vw}
+    }
+  </style>
+</head>
+<body>
+
+<!-- DRAWER OVERLAY -->
+<div class="ov" id="ov" onclick="closeDr()"></div>
+<div class="dr" id="dr">
+  <div class="dr-top">
+    <div>
+      <div style="font-size:9px;font-family:var(--mono);color:var(--tm);letter-spacing:2px;margin-bottom:3px">INDICATOR DETAIL</div>
+      <div class="dr-ind" id="dr-ind">—</div>
+    </div>
+    <button class="dr-cl" onclick="closeDr()">✕</button>
+  </div>
+  <div class="dr-body" id="dr-body"></div>
+</div>
+
+<div class="pg">
+
+  <!-- ── SIDEBAR ────────────────────────────────────────── -->
+  <aside class="sb">
+    <div class="sb-logo">
+      <div class="sb-icon">
+        <svg viewBox="0 0 20 20" fill="none">
+          <path d="M10 2L3 6v5c0 4 3.2 7.4 7 8.4 3.8-1 7-4.4 7-8.4V6L10 2z" fill="#000"/>
+          <path d="M7 10l2 2 4-4" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div>
+        <div class="sb-name">SOC DEFENDERS</div>
+        <div class="sb-ver">CTI Platform · defend.network</div>
+      </div>
+    </div>
+
+    <nav class="sb-nav">
+      <div class="ng">OVERVIEW</div>
+      <div class="ni on">
+        <svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+        Dashboard
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><line x1="8" y1="4" x2="8" y2="8"/><line x1="8" y1="8" x2="11" y2="10"/></svg>
+        Daily Briefings
+        <span class="nb">NEW</span>
+      </div>
+
+      <div class="ng">THREAT INTEL</div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 1l2 4h4l-3 3 1 4-4-2-4 2 1-4L2 5h4z"/></svg>
+        IOC Explorer
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><line x1="5" y1="8" x2="11" y2="8"/><line x1="8" y1="5" x2="8" y2="11"/></svg>
+        Threat Actors
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 12l4-4 3 3 5-6"/></svg>
+        CVE Tracker
+        <span class="nb">3</span>
+      </div>
+
+      <!-- 16 Threat Type Category Pages -->
+      <div class="ng">THREAT CATEGORIES</div>
+      <div style="padding:6px 16px;display:flex;flex-wrap:wrap;gap:4px">
+        <span id="tc-ransomware" onclick="setThreatCat('ransomware')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Ransomware</span>
+        <span id="tc-apt" onclick="setThreatCat('apt')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">APT</span>
+        <span id="tc-phishing" onclick="setThreatCat('phishing')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Phishing</span>
+        <span id="tc-supply-chain" onclick="setThreatCat('supply-chain')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Supply Chain</span>
+        <span id="tc-zero-day" onclick="setThreatCat('zero-day')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Zero-Day</span>
+        <span id="tc-ddos" onclick="setThreatCat('ddos')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">DDoS</span>
+        <span id="tc-bec" onclick="setThreatCat('bec')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">BEC</span>
+        <span id="tc-malware" onclick="setThreatCat('malware')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Malware</span>
+        <span id="tc-vuln" onclick="setThreatCat('vulnerability-exploit')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Vuln Exploit</span>
+        <span id="tc-insider" onclick="setThreatCat('insider-threat')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Insider</span>
+        <span id="tc-iot" onclick="setThreatCat('iot-ot')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">IoT/OT</span>
+        <span id="tc-data" onclick="setThreatCat('data-breach')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Data Breach</span>
+        <span id="tc-cred" onclick="setThreatCat('credential-theft')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Cred Theft</span>
+        <span id="tc-mobile" onclick="setThreatCat('mobile-malware')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Mobile</span>
+        <span id="tc-crypto" onclick="setThreatCat('cryptojacking')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Cryptojack</span>
+        <span id="tc-compliance" onclick="setThreatCat('compliance')" style="font-size:9px;padding:2px 6px;border:1px solid var(--border);border-radius:3px;color:var(--tm);cursor:pointer;font-family:var(--mono);letter-spacing:.5px;transition:all .15s">Compliance</span>
+      </div>
+
+      <div class="ng">OPERATIONS</div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2a6 6 0 100 12A6 6 0 008 2z"/><path d="M8 5v3l2 2"/></svg>
+        Incident Response
+      </div>
+      <div class="ni">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="12" height="8" rx="1"/><path d="M5 4V3h6v1"/></svg>
+        Playbooks
+      </div>
+    </nav>
+
+    <div class="sb-foot">
+      <div class="sh">
+        <div><span class="hd ok"></span>FEEDS: 7/7 ACTIVE</div>
+        <div><span class="hd ok"></span>SIEM CONNECTED</div>
+        <div><span class="hd warn"></span>TIP SYNC: 2m AGO</div>
+        <div><span class="hd ok"></span>RSS: /feed.xml LIVE</div>
+        <div style="margin-top:6px;color:var(--td)">defend.network ↗</div>
+        <div style="color:var(--td)">socdefenders.ai ↗</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── TOPBAR ──────────────────────────────────────────── -->
+  <header class="tb">
+    <div>
+      <div class="tb-title">CTI Dashboard</div>
+      <div class="tb-path">/ overview / all-industries / 7d · schema v2.4</div>
+    </div>
+
+    <div class="tl-badge elevated" id="tl-badge">
+      <div class="td-dot"></div>
+      <span id="tl-text">ELEVATED</span>
+    </div>
+    <button class="fp" onclick="cycleThreat()" style="font-size:9px;padding:3px 9px;margin-left:4px">CYCLE</button>
+
+    <div class="clk">
+      <div class="clk-t" id="clk">00:00:00</div>
+      <div class="clk-d" id="clk-d">— UTC</div>
+    </div>
+  </header>
+
+  <!-- ── MAIN CONTENT ──────────────────────────────────── -->
+  <main class="mc">
+
+    <!-- ── TAXONOMY FILTER BAR ──────────────────────────── -->
+    <div class="fbar" style="margin:-22px -24px 0;border-radius:0">
+      <span class="fl">Severity:</span>
+      <button class="fp on" data-sev="all"      onclick="setSev(this,'all')">All</button>
+      <button class="fp cr" data-sev="critical" onclick="setSev(this,'critical')">Critical</button>
+      <button class="fp hi" data-sev="high"     onclick="setSev(this,'high')">High</button>
+      <button class="fp me" data-sev="medium"   onclick="setSev(this,'medium')">Medium</button>
+      <button class="fp"    data-sev="low"      onclick="setSev(this,'low')">Low</button>
+      <div class="fs"></div>
+      <!-- 16 threat types from schema.json -->
+      <span class="fl">Type:</span>
+      <button class="fp on" data-tt="all"               onclick="setType(this,'all')">All</button>
+      <button class="fp"    data-tt="ransomware"         onclick="setType(this,'ransomware')">Ransomware</button>
+      <button class="fp"    data-tt="apt"                onclick="setType(this,'apt')">APT</button>
+      <button class="fp"    data-tt="phishing"           onclick="setType(this,'phishing')">Phishing</button>
+      <button class="fp"    data-tt="zero-day"           onclick="setType(this,'zero-day')">Zero-Day</button>
+      <button class="fp"    data-tt="supply-chain"       onclick="setType(this,'supply-chain')">Supply Chain</button>
+      <button class="fp"    data-tt="data-breach"        onclick="setType(this,'data-breach')">Data Breach</button>
+      <button class="fp"    data-tt="malware"            onclick="setType(this,'malware')">Malware</button>
+      <button class="fp"    data-tt="vulnerability-exploit" onclick="setType(this,'vulnerability-exploit')">Vuln Exploit</button>
+      <button class="fp"    data-tt="credential-theft"   onclick="setType(this,'credential-theft')">Cred Theft</button>
+      <button class="fp"    data-tt="ddos"               onclick="setType(this,'ddos')">DDoS</button>
+      <button class="fp"    data-tt="bec"                onclick="setType(this,'bec')">BEC</button>
+      <button class="fp"    data-tt="insider-threat"     onclick="setType(this,'insider-threat')">Insider</button>
+      <button class="fp"    data-tt="iot-ot"             onclick="setType(this,'iot-ot')">IoT/OT</button>
+      <button class="fp"    data-tt="mobile-malware"     onclick="setType(this,'mobile-malware')">Mobile</button>
+      <button class="fp"    data-tt="cryptojacking"      onclick="setType(this,'cryptojacking')">Cryptojack</button>
+      <div class="fs"></div>
+      <!-- 13 industry categories from schema.json -->
+      <span class="fl">Industry:</span>
+      <button class="fp on" data-ind="all"          onclick="setInd(this,'all')">All</button>
+      <button class="fp"    data-ind="healthcare"   onclick="setInd(this,'healthcare')">Healthcare</button>
+      <button class="fp"    data-ind="finance"      onclick="setInd(this,'finance')">Finance</button>
+      <button class="fp"    data-ind="government"   onclick="setInd(this,'government')">Government</button>
+      <button class="fp"    data-ind="technology"   onclick="setInd(this,'technology')">Technology</button>
+      <button class="fp"    data-ind="energy"       onclick="setInd(this,'energy')">Energy</button>
+      <button class="fp"    data-ind="education"    onclick="setInd(this,'education')">Education</button>
+      <button class="fp"    data-ind="manufacturing" onclick="setInd(this,'manufacturing')">Manufacturing</button>
+      <button class="fp"    data-ind="retail"       onclick="setInd(this,'retail')">Retail</button>
+      <button class="fp"    data-ind="legal"        onclick="setInd(this,'legal')">Legal</button>
+      <button class="fp"    data-ind="telecom"      onclick="setInd(this,'telecom')">Telecom</button>
+      <button class="fp"    data-ind="transportation" onclick="setInd(this,'transportation')">Transport</button>
+      <button class="fp"    data-ind="media"        onclick="setInd(this,'media')">Media</button>
+      <button class="fp"    data-ind="defense"      onclick="setInd(this,'defense')">Defense</button>
+    </div>
+
+    <!-- ── DAILY BRIEFING ───────────────────────────────── -->
+    <div>
+      <div class="sh2">Today's Threat Briefing — <span style="font-family:var(--mono);color:var(--accent)">trivy-supply-chain-lockbit-cisa-kev-2026-05-27</span></div>
+      <div class="briefing">
+        <div class="brief-main">
+          <div class="brief-header">
+            <div class="brief-date-block">
+              <div class="brief-day" id="bday">27</div>
+              <div class="brief-month" id="bmon">MAY 2026</div>
+            </div>
+            <div>
+              <div class="brief-title">Critical VPN Zero-Day + LockBit Affiliate Energy Sector Campaign + 3 CISA KEV Additions</div>
+              <div class="brief-slug">/briefings/vpn-zero-day-lockbit-energy-cisa-kev-2026-05-27</div>
+              <div class="brief-tags">
+                <span class="sb2 critical">Critical</span>
+                <span class="ftag ransomware">ransomware</span>
+                <span class="ftag apt">apt</span>
+                <span class="ftag zero-day" style="border-color:rgba(255,0,68,.4);color:var(--crit)">zero-day</span>
+                <span class="ftag vulnerability">vulnerability</span>
+                <span style="font-family:var(--mono);font-size:10px;color:var(--tm)">energy · government · finance</span>
+              </div>
+            </div>
+          </div>
+          <div class="brief-body">
+            <strong>Executive Summary:</strong> Today's briefing covers five high-priority threats affecting critical infrastructure. A critical unauthenticated RCE zero-day in a widely deployed enterprise VPN product (CVSS 9.8) is being actively exploited in the wild — patch immediately. A LockBit 3.0 affiliate has launched a new campaign targeting energy-sector SCADA-adjacent Windows servers using a previously unseen dropper variant that evades most EDR solutions via process hollowing. CISA added three vulnerabilities to the KEV catalog, including flaws in Fortinet FortiOS, Ivanti Connect Secure, and Adobe ColdFusion. A state-nexus actor (likely APT29) has been observed targeting government email infrastructure. A data leak exposing 5.8M Uruguayan citizen records highlights an ongoing LATAM government targeting campaign.
+          </div>
+          <!-- Top 5 Threats -->
+          <div class="threat-strip" id="top5"></div>
+        </div>
+
+        <!-- ACTION CHECKLIST -->
+        <div class="checklist-card">
+          <div class="cl-header">
+            <div class="cl-title">⬛ Action Checklist</div>
+            <div class="cl-prog" id="cl-prog">0 / 8 done</div>
+          </div>
+          <div class="cl-body" id="cl-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── KPI CARDS ────────────────────────────────────── -->
+    <div>
+      <div class="sh2">Key Performance Indicators · 7-Day Window</div>
+      <div class="kpi-g">
+        <div class="kc i">
+          <div class="kl">Active IOCs</div>
+          <div class="kv">79,215</div>
+          <div class="ks"><span class="kd up">▲ +9,829</span> in last 24h · 13 industries</div>
+          <svg class="kspk" viewBox="0 0 90 36"><polyline points="0,28 15,23 30,26 45,12 60,16 75,6 90,3" fill="none" stroke="#00c9ff" stroke-width="1.5"/></svg>
+        </div>
+        <div class="kc b">
+          <div class="kl">Blocked Requests</div>
+          <div class="kv">142,894</div>
+          <div class="ks"><span class="kd up">▲ +3,210</span> malicious reqs today</div>
+          <svg class="kspk" viewBox="0 0 90 36"><polyline points="0,32 15,28 30,30 45,18 60,20 75,10 90,7" fill="none" stroke="#ff0044" stroke-width="1.5"/></svg>
+        </div>
+        <div class="kc f">
+          <div class="kl">False Positive Rate</div>
+          <div class="kv">2.3<span style="font-size:16px">%</span></div>
+          <div class="ks"><span class="kd dn">▼ 0.4%</span> vs 7-day avg — improving</div>
+          <svg class="kspk" viewBox="0 0 90 36"><polyline points="0,8 15,12 30,10 45,18 60,15 75,22 90,26" fill="none" stroke="#ffc300" stroke-width="1.5"/></svg>
+        </div>
+        <div class="kc p">
+          <div class="kl">Top Attacked Port</div>
+          <div class="kv">443</div>
+          <div class="ks"><span class="kd up">▲ 34%</span> HTTPS · 48,234 hits today</div>
+          <svg class="kspk" viewBox="0 0 90 36"><polyline points="0,18 15,16 30,20 45,8 60,10 75,4 90,2" fill="none" stroke="#ff6600" stroke-width="1.5"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ROW 1 ─────────────────────────────────── -->
+    <div class="cg1">
+      <div class="cc">
+        <div class="ch"><span class="ct">Threat Types Over Time</span><span class="ctag">LINE · 7D</span></div>
+        <div style="position:relative;height:210px"><canvas id="cLine"></canvas></div>
+      </div>
+      <div class="cc">
+        <div class="ch"><span class="ct">Attack Vectors by Region</span><span class="ctag">DONUT · LIVE</span></div>
+        <div style="position:relative;height:210px"><canvas id="cPie"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ROW 2 ─────────────────────────────────── -->
+    <div class="cg2">
+      <div class="cc">
+        <div class="ch"><span class="ct">Top 10 Malicious IPs / Domains</span><span class="ctag">BAR · 24H</span></div>
+        <div style="position:relative;height:200px"><canvas id="cBar"></canvas></div>
+      </div>
+      <div class="cc">
+        <div class="ch"><span class="ct">IOC Confidence Score Distribution</span><span class="ctag">HISTOGRAM</span></div>
+        <div style="position:relative;height:200px"><canvas id="cHist"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ── CVE TRACKER ──────────────────────────────────── -->
+    <div>
+      <div class="sh2">CVE Tracker — Active Exploited Vulnerabilities</div>
+      <div class="cve-g" id="cveGrid"></div>
+    </div>
+
+    <!-- ── IOC BY INDUSTRY ──────────────────────────────── -->
+    <div>
+      <div class="sh2">IOCs by Industry Sector · 7 Days · 13 Categories</div>
+      <div class="sg" id="secGrid"></div>
+    </div>
+
+    <!-- ── IOC TABLE ────────────────────────────────────── -->
+    <div>
+      <div class="sh2">Threat Intel Feed — IOC Data Table</div>
+      <div class="tc">
+        <div class="th2">
+          <div class="tt2">Indicators of Compromise</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--tm)" id="tCount">Showing 25 entries</div>
+          <input class="ts" id="tSearch" type="text" placeholder="⌕  Search indicator, source..." oninput="rebuildTable()" />
+        </div>
+        <div class="tw"><table><thead><tr>
+          <th onclick="sortBy(0)">Date <span class="sa">↕</span></th>
+          <th onclick="sortBy(1)">Indicator <span class="sa">↕</span></th>
+          <th onclick="sortBy(2)">Type <span class="sa">↕</span></th>
+          <th onclick="sortBy(3)">Severity <span class="sa">↕</span></th>
+          <th onclick="sortBy(4)">Threat Cat <span class="sa">↕</span></th>
+          <th onclick="sortBy(5)">Industry <span class="sa">↕</span></th>
+          <th onclick="sortBy(6)">Source <span class="sa">↕</span></th>
+          <th onclick="sortBy(7)">Confidence <span class="sa">↕</span></th>
+        </tr></thead><tbody id="tBody"></tbody></table></div>
+        <div class="tf">
+          <span id="tCountB">25 total records</span>
+          <div style="display:flex;gap:5px" id="tPages"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── INTEL FEED + SIDE PANEL ──────────────────────── -->
+    <div>
+      <div class="sh2">Latest Intel Feed · Structured Briefings</div>
+      <div class="fg">
+        <div class="fl2" id="feedList"></div>
+        <div class="pr">
+
+          <!-- Automation Pipeline -->
+          <div class="mc2">
+            <div class="mt">Automation Pipeline · defend.network</div>
+            <div class="pipe" id="pipe"></div>
+          </div>
+
+          <!-- Malware Families -->
+          <div class="mc2">
+            <div class="mt">Top Malware Families · 24H</div>
+            <div id="malBars"></div>
+          </div>
+
+          <!-- SOC Maturity -->
+          <div class="mc2">
+            <div class="mt">SOC Maturity Levels</div>
+            <div class="mi"><div class="ml l1">1</div><div class="mi-info"><div class="mi-n">Reactive SOC</div><div class="mi-d">Responds after incidents; limited TI integration.</div></div></div>
+            <div class="mi"><div class="ml l2">2</div><div class="mi-info"><div class="mi-n">Proactive SOC</div><div class="mi-d">Actively hunts; uses basic intel feeds.</div></div></div>
+            <div class="mi"><div class="ml l3">3</div><div class="mi-info"><div class="mi-n">Intelligence-Driven</div><div class="mi-d">TI informs all decisions; predictive analytics.</div></div></div>
+            <div class="mi"><div class="ml l4">4</div><div class="mi-info"><div class="mi-n">Adaptive SOC</div><div class="mi-d">ML/AI autonomous detection; continuously evolves.</div></div></div>
+          </div>
+
+          <!-- KPI Metrics -->
+          <div class="mc2">
+            <div class="mt">SOC Performance Metrics</div>
+            <div style="font-size:11px;line-height:2;color:var(--tm);font-family:var(--mono)">
+              <div style="display:flex;justify-content:space-between"><span>MTTD</span><span style="color:var(--med)">4.2h</span></div>
+              <div style="display:flex;justify-content:space-between"><span>MTTR</span><span style="color:var(--high)">12.7h</span></div>
+              <div style="display:flex;justify-content:space-between"><span>IoC Hit Rate</span><span style="color:var(--accent)">87.4%</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Automation Rate</span><span style="color:var(--accent2)">62.1%</span></div>
+              <div style="display:flex;justify-content:space-between"><span>True Positive Rate</span><span style="color:var(--accent)">97.7%</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Coverage</span><span style="color:var(--accent)">94.8%</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Analyst Load</span><span style="color:var(--tp)">14 inc/day</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="padding:12px 0;text-align:center;font-family:var(--mono);font-size:9px;color:var(--td)">
+      SOC DEFENDERS CTI DASHBOARD · TAXONOMY: 16 THREAT TYPES · 13 INDUSTRIES · 4 SEVERITY LEVELS · SCHEMA v2.4 · DEFEND.NETWORK · AUTO-REFRESH 60s
+    </div>
+
+  </main>
+</div><!-- end .pg -->
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  SCHEMA.JSON — taxonomy definitions (from defend.network)
+// ═══════════════════════════════════════════════════════════════════
+const SCHEMA = {
+  threatTypes: ['ransomware','zero-day','phishing','apt','supply-chain','data-breach','malware','vulnerability-exploit','credential-theft','ddos','bec','insider-threat','iot-ot','mobile-malware','compliance','cryptojacking'],
+  industries:  ['healthcare','finance','government','technology','energy','education','manufacturing','retail','legal','telecom','transportation','media','defense'],
+  severity:    ['critical','high','medium','low']
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  IOC DATA — structured JSON matching defend.network schema
+// ═══════════════════════════════════════════════════════════════════
+const IOC = [
+  { date:'2026-05-27 13:39', indicator:'198.51.100.45',          type:'ip',     sev:'critical', threatTypes:['apt','vulnerability-exploit'],   industry:'government',   source:'CISA KEV',        conf:96, cve:['CVE-2024-4577','CVE-2025-0282'], malware:['Cobalt Strike','AsyncRAT'],       mitig:['Block at perimeter firewall','Emergency patch — apply immediately','Isolate affected endpoints','Hunt for lateral movement'] },
+  { date:'2026-05-27 13:38', indicator:'malware-cdn[.]ru',        type:'domain', sev:'critical', threatTypes:['malware','credential-theft'],    industry:'finance',      source:'isMalicious',     conf:94, cve:['CVE-2024-21887'],                 malware:['Qakbot','RedLine Stealer'],       mitig:['DNS sinkhole domain','Revoke compromised credentials','Enable MFA on all accounts','Alert finance team'] },
+  { date:'2026-05-27 13:35', indicator:'d41d8cd98f00b204e9800',   type:'hash',   sev:'critical', threatTypes:['ransomware','malware'],           industry:'energy',       source:'AlienVault OTX',  conf:99, cve:['CVE-2024-3400'],                  malware:['LockBit 3.0','BlackCat'],         mitig:['Quarantine hash on all endpoints','Air-gap SCADA systems','Engage ransomware IR team','Verify backups immediately'] },
+  { date:'2026-05-27 13:33', indicator:'phish-kit@tempmail.io',   type:'email',  sev:'high',     threatTypes:['phishing','bec'],                industry:'finance',      source:'therecord.media', conf:88, cve:[],                                 malware:['PhishKit v4','EvilProxy'],        mitig:['Block sender domain','Deploy DMARC/DKIM','Brief finance employees','Search mailboxes for similar campaigns'] },
+  { date:'2026-05-27 13:30', indicator:'192.0.2.173',             type:'ip',     sev:'high',     threatTypes:['apt','credential-theft'],        industry:'government',   source:'CISA KEV',        conf:85, cve:['CVE-2025-1234'],                  malware:['PlugX','ShadowPad'],              mitig:['Block IP at edge','Threat hunt for PlugX artifacts','Patch VPN appliance','File CISA incident report'] },
+  { date:'2026-05-27 13:28', indicator:'hxxps://evil-cdn[.]io',   type:'url',    sev:'high',     threatTypes:['malware','supply-chain'],         industry:'manufacturing',source:'darkreading.com', conf:82, cve:['CVE-2024-27198'],                 malware:['IcedID','Dridex'],                mitig:['Block URL in web proxy','Audit software supply chain','Patch build systems','Check for malicious artifacts'] },
+  { date:'2026-05-27 13:25', indicator:'203.0.113.88',            type:'ip',     sev:'high',     threatTypes:['ddos','iot-ot'],                 industry:'telecom',      source:'SOC Defenders',   conf:80, cve:[],                                 malware:['Mirai v2','Tsunami'],             mitig:['Rate-limit source IP','Enable DDoS mitigation rules','Apply geo-blocking for high-risk regions','Patch IoT firmware'] },
+  { date:'2026-05-27 13:20', indicator:'AgentTesla.exe.sha256',   type:'hash',   sev:'high',     threatTypes:['malware','credential-theft'],    industry:'education',    source:'VirusTotal',      conf:78, cve:['CVE-2024-1709'],                  malware:['AgentTesla','FormBook'],          mitig:['Add hash to EDR block list','Scan for spread','Review email gateway rules','Alert user base'] },
+  { date:'2026-05-27 13:15', indicator:'update-service[.]com',    type:'domain', sev:'medium',   threatTypes:['supply-chain','malware'],        industry:'transportation',source:'URLScan.io',     conf:72, cve:[],                                 malware:['SilverSparrow','XLoader'],        mitig:['Monitor DNS resolution','Apply domain block','Alert on first-seen domain access'] },
+  { date:'2026-05-27 13:10', indicator:'185.220.101.42',          type:'ip',     sev:'medium',   threatTypes:['apt','zero-day'],               industry:'government',   source:'AlienVault OTX',  conf:70, cve:['CVE-2023-48788'],                 malware:['Lazarus TTP','AppleJeus'],        mitig:['Block at firewall','Correlate with nation-state TTP DB','File CISA report'] },
+  { date:'2026-05-27 13:05', indicator:'spear@phish-actor.net',   type:'email',  sev:'medium',   threatTypes:['phishing','bec'],                industry:'finance',      source:'isMalicious',     conf:68, cve:[],                                 malware:['Emotet Loader','TrickBot'],       mitig:['Block email domain','Quarantine existing emails','Brief targeted employees'] },
+  { date:'2026-05-27 13:00', indicator:'hxxp://192.0.2.55/cmd',   type:'url',    sev:'medium',   threatTypes:['vulnerability-exploit','malware'],industry:'manufacturing',source:'VirusTotal',     conf:65, cve:['CVE-2024-29824'],                 malware:['CobaltStrike Beacon'],            mitig:['Block URL','Investigate C2 callbacks','Check process injection artifacts'] },
+  { date:'2026-05-27 12:55', indicator:'botnet-c2[.]xyz',         type:'domain', sev:'medium',   threatTypes:['ddos','iot-ot'],                industry:'telecom',      source:'SOC Defenders',   conf:63, cve:[],                                 malware:['Mirai','Gafgyt'],                 mitig:['DNS block domain','Review IoT device inventory','Apply firmware updates'] },
+  { date:'2026-05-27 12:50', indicator:'BlackEnergy.ics.sha256',  type:'hash',   sev:'medium',   threatTypes:['iot-ot','ransomware'],           industry:'energy',       source:'URLScan.io',      conf:60, cve:['CVE-2024-6387'],                  malware:['BlackEnergy','Industroyer'],      mitig:['Quarantine file','Scan OT/ICS networks','Engage ICS-CERT'] },
+  { date:'2026-05-27 12:45', indicator:'198.51.100.12',           type:'ip',     sev:'low',      threatTypes:['malware'],                      industry:'education',    source:'darkreading.com', conf:55, cve:[],                                 malware:['Adware Loader'],                  mitig:['Monitor traffic volume','Add to watchlist','No immediate action required'] },
+  { date:'2026-05-27 12:40', indicator:'track-pixel[.]io',        type:'domain', sev:'low',      threatTypes:['phishing'],                     industry:'transportation',source:'isMalicious',    conf:52, cve:[],                                 malware:['PixelTracker'],                   mitig:['Add to low-priority watch list','Review 30 days of DNS logs'] },
+  { date:'2026-05-27 12:35', indicator:'noreply@spam-burst.io',   type:'email',  sev:'low',      threatTypes:['phishing','bec'],                industry:'retail',       source:'VirusTotal',      conf:50, cve:[],                                 malware:['Spam Mailer'],                    mitig:['Update spam filter rules','No escalation needed'] },
+  { date:'2026-05-27 12:30', indicator:'hxxps://redir[.]biz/lp',  type:'url',    sev:'low',      threatTypes:['phishing'],                     industry:'retail',       source:'SOC Defenders',   conf:48, cve:[],                                 malware:['Redirector Kit'],                 mitig:['Block in web proxy','Monitor redirect chains'] },
+  { date:'2026-05-27 12:25', indicator:'104.21.45.67',            type:'ip',     sev:'critical', threatTypes:['apt','zero-day'],               industry:'government',   source:'CISA KEV',        conf:97, cve:['CVE-2025-2186','CVE-2024-38112'],  malware:['APT29 TTP','Brute Ratel'],        mitig:['Immediate block at all perimeters','Notify CISA','Initiate threat hunt across all gov systems'] },
+  { date:'2026-05-27 12:20', indicator:'ransomware-stage1.sha256',type:'hash',   sev:'critical', threatTypes:['ransomware','malware'],           industry:'energy',       source:'AlienVault OTX',  conf:99, cve:['CVE-2024-20767'],                 malware:['BlackCat/ALPHV','Cl0p'],          mitig:['Quarantine immediately','Air-gap affected systems','Engage ransomware response team'] },
+  { date:'2026-05-27 12:15', indicator:'cmd /c powershell -enc...',type:'hash',  sev:'high',     threatTypes:['malware','vulnerability-exploit'],industry:'telecom',     source:'darkreading.com', conf:84, cve:['CVE-2024-30103'],                 malware:['PowerShell Empire','Metasploit'],  mitig:['Enable PS script block logging','Apply ASR rules','Hunt for similar execution patterns'] },
+  { date:'2026-05-27 12:10', indicator:'203.0.113.201',           type:'ip',     sev:'high',     threatTypes:['malware','supply-chain'],        industry:'education',    source:'SOC Defenders',   conf:76, cve:[],                                 malware:['SocGholish','GootLoader'],        mitig:['Block IP','Warn faculty and students','Scan for drive-by download artifacts'] },
+  { date:'2026-05-27 12:05', indicator:'evil-update[.]net',       type:'domain', sev:'medium',   threatTypes:['supply-chain','apt'],            industry:'manufacturing',source:'isMalicious',    conf:67, cve:['CVE-2024-22024'],                 malware:['SupplyChainBadge','NightHawk'],    mitig:['DNS block','Audit software supply chain','Review vendor access'] },
+  { date:'2026-05-27 12:00', indicator:'phish@bank-alert.xyz',    type:'email',  sev:'high',     threatTypes:['phishing','credential-theft'],   industry:'finance',      source:'VirusTotal',      conf:81, cve:[],                                 malware:['Ursa/Pony','NanoCore RAT'],       mitig:['Block sender domain','Alert finance team','Check for credential theft artifacts'] },
+  { date:'2026-05-27 11:55', indicator:'172.16.254.99',           type:'ip',     sev:'low',      threatTypes:['malware'],                      industry:'transportation',source:'AlienVault OTX', conf:44, cve:[],                                 malware:['Low-tier Scanner'],               mitig:['Monitor only','Add to watchlist'] },
+];
+
+// CVE data
+const CVE_DATA = [
+  { id:'CVE-2025-2186', title:'Fortinet FortiOS Unauthenticated RCE — Enterprise VPN', cvss:9.8, cls:'cr', cvssLabel:'cr', vendor:'Fortinet', product:'FortiOS 7.x', patch:'7.4.3+', exploited:true, industry:['government','finance','defense'], threatTypes:['zero-day','vulnerability-exploit'], desc:'Unauthenticated stack-based buffer overflow in FortiOS SSL-VPN allows remote code execution without credentials. Actively exploited in the wild by APT groups.' },
+  { id:'CVE-2024-38112', title:'Windows MSHTML Platform 0-Day — Active APT Exploitation', cvss:8.7, cls:'cr', cvssLabel:'cr', vendor:'Microsoft', product:'Windows 10/11, Server', patch:'KB5040442', exploited:true, industry:['government','technology'], threatTypes:['zero-day','apt'], desc:'Use-after-free vulnerability in MSHTML platform allows attackers to execute arbitrary code via a specially crafted .url file. Observed in APT29 campaigns.' },
+  { id:'CVE-2024-4577', title:'PHP CGI Argument Injection — Remote Code Execution', cvss:9.8, cls:'cr', cvssLabel:'cr', vendor:'PHP Group', product:'PHP 8.x (Windows)', patch:'8.1.29 / 8.2.20', exploited:true, industry:['technology','education'], threatTypes:['vulnerability-exploit'], desc:'Argument injection in PHP-CGI on Windows allows unauthenticated remote code execution. Rapidly weaponized after disclosure; mass-scanning activity observed.' },
+  { id:'CVE-2024-3400', title:'Palo Alto PAN-OS Command Injection — OS Command Execution', cvss:10.0, cls:'cr', cvssLabel:'cr', vendor:'Palo Alto', product:'PAN-OS < 11.1.2', patch:'11.1.2-h3+', exploited:true, industry:['finance','government','energy'], threatTypes:['zero-day','vulnerability-exploit'], desc:'OS command injection in GlobalProtect feature allows unauthenticated RCE with root privileges. CVSS 10.0 — highest severity. Emergency patch required.' },
+  { id:'CVE-2024-27198', title:'JetBrains TeamCity Authentication Bypass — CI/CD Pipeline Attack', cvss:9.8, cls:'cr', cvssLabel:'cr', vendor:'JetBrains', product:'TeamCity < 2023.11.4', patch:'2023.11.4+', exploited:true, industry:['technology','manufacturing'], threatTypes:['supply-chain','vulnerability-exploit'], desc:'Authentication bypass allows unauthenticated attackers to achieve RCE on TeamCity servers, enabling supply chain attacks via CI/CD pipeline compromise.' },
+  { id:'CVE-2024-6387', title:'OpenSSH regreSSHion — Signal Handler Race Condition RCE', cvss:8.1, cls:'hi', cvssLabel:'hi', vendor:'OpenSSH', product:'OpenSSH 8.5p1–9.7p1', patch:'9.8p1+', exploited:false, industry:['technology','telecom','energy'], threatTypes:['vulnerability-exploit'], desc:'Signal handler race condition allows unauthenticated remote code execution as root. Affects ~14M internet-exposed servers. Exploitation is difficult but PoC exists.' },
+];
+
+// Sector data — 13 industries from schema.json
+const SECTOR_DATA = [
+  { name:'Unclassified', sub:'No classification', tier:4, count:78872, delta:'+9786', pct:100, color:'#00ff88' },
+  { name:'Government',   sub:'Federal, state, local', tier:1, count:79, delta:'+10', pct:12, color:'#00c9ff' },
+  { name:'Finance',      sub:'Banks, fintech, crypto', tier:1, count:24, delta:'+3', pct:4, color:'#00c9ff' },
+  { name:'Manufacturing',sub:'Factories, ICS, supply chain', tier:1, count:24, delta:'+3', pct:4, color:'#00c9ff' },
+  { name:'Energy',       sub:'Power grid, oil & gas', tier:2, count:24, delta:'+3', pct:4, color:'#ffc300' },
+  { name:'Education',    sub:'Universities, K-12', tier:2, count:24, delta:'+3', pct:4, color:'#ffc300' },
+  { name:'Telecom',      sub:'ISPs, carriers', tier:2, count:24, delta:'+3', pct:4, color:'#ffc300' },
+  { name:'Transportation',sub:'Airlines, rail, logistics', tier:3, count:24, delta:'+3', pct:4, color:'#ff6600' },
+  { name:'Healthcare',   sub:'Hospitals, pharma', tier:1, count:18, delta:'+2', pct:3, color:'#00c9ff' },
+  { name:'Technology',   sub:'SaaS, cloud, dev', tier:2, count:15, delta:'+4', pct:2, color:'#ffc300' },
+  { name:'Defense',      sub:'Military, contractors', tier:1, count:12, delta:'+1', pct:2, color:'#00c9ff' },
+  { name:'Retail',       sub:'E-commerce, POS', tier:3, count:10, delta:'+1', pct:1, color:'#ff6600' },
+  { name:'Media',        sub:'News, publishing', tier:3, count:8, delta:'+1', pct:1, color:'#ff6600' },
+];
+
+ty-exploit','zero-day'] },
+  { n:4, hl:'Latin American Cybercriminals Breach Uruguayan Government — 5.8M Records Exposed', src:'darkreading.com', slug:'latam-cybercriminals-uruguay-government-data-breach-2026-05-27', time:'2h ago', sev:'high', tags:['breach','exploit'], excerpt:'A purported leak exposing 5.8M Uruguayan citizen records is the latest in a wave of LATAM government-targeted campaigns leveraging unpatched web application vulnerabilities.', industries:['government'], threatTypes:['data-breach','vulnerability-exploit'] },
+  { n:5, hl:'LockBit 3.0 Affiliate Targets Energy Sector with Novel EDR-Bypass Dropper', src:'SOC Defenders', slug:'lockbit-energy-edr-bypass-dropper-2026-05-27', time:'4h ago', sev:'critical', tags:['ransomware','malware'], excerpt:'A new LockBit affiliate dropper uses process hollowing against legitimate Windows services to evade EDR telemetry. Targets SCADA-adjacent Windows servers in energy sector networks.', industries:['energy','manufacturing'], threatTypes:['ransomware','iot-ot'] },
+  { n:6, hl:'Inside a 47-Day APT Dwell: Anatomy of a Financial Sector Intrusion', src:'socdefenders.ai', slug:'apt-47-day-dwell-financial-sector-anatomy-2026-05-27', time:'5h ago', sev:'medium', tags:['apt','breach'], excerpt:'Analysis of a financial sector intrusion covering credential harvesting, lateral movement via SMB, and staged exfiltration through encrypted DNS tunneling — a classic APT29 playbook.', industries:['finance'], threatTypes:['apt','credential-theft','data-breach'] },
+];
+
+const MALWARE_DATA = [
+  {name:'Cobalt Strike',count:342},{name:'LockBit 3.0',count:287},{name:'BlackCat',count:198},{name:'Emotet',count:175},{name:'QakBot',count:143},{name:'RedLine',count:121},{name:'AsyncRAT',count:98},
+];
+
+const TOP5 = [
+  { n:1, name:'FortiOS CVE-2025-2186 Active Exploitation', sev:'critical', industry:'government · finance · defense', types:['zero-day','vulnerability-exploit'], desc:'CVSS 9.8 unauthenticated RCE in FortiOS SSL-VPN. APT groups exploiting pre-patch. Emergency patch required.' },
+  { n:2, name:'LockBit 3.0 Energy Sector Campaign — New Dropper Variant', sev:'critical', industry:'energy · manufacturing', types:['ransomware','iot-ot'], desc:'Novel EDR-bypass dropper targeting SCADA-adjacent Windows servers. Process hollowing evades most endpoint controls.' },
+  { n:3, name:'APT29 Government Email Infrastructure Targeting', sev:'high', industry:'government · defense', types:['apt','credential-theft'], desc:'Spear-phishing campaign leveraging MSHTML zero-day to harvest credentials from senior government officials.' },
+  { n:4, name:'PHP CGI Mass Exploitation — Wide Attack Surface', sev:'high', industry:'technology · education', types:['vulnerability-exploit'], desc:'CVE-2024-4577 weaponized within 48h. Mass-scanning of PHP-CGI servers on Windows; academic institutions particularly exposed.' },
+  { n:5, name:'JetBrains TeamCity Supply Chain Attack Vectors', sev:'high', industry:'technology · manufacturing', types:['supply-chain','vulnerability-exploit'], desc:'TeamCity auth bypass enabling CI/CD pipeline compromise. Upstream software supply chain risk for all customers.' },
+];
+
+const CHECKLIST = [
+  { text:'URGENT: Patch FortiOS to 7.4.3+ — CVE-2025-2186 CVSS 9.8 actively exploited', urg:'u' },
+  { text:'URGENT: Hunt for LockBit dropper artifacts on all energy-sector Windows servers', urg:'u' },
+  { text:'HIGH: Block IOC list from today\'s briefing at perimeter firewall and DNS', urg:'h' },
+  { text:'HIGH: Audit TeamCity / CI/CD pipeline integrity — CVE-2024-27198 supply chain risk', urg:'h' },
+  { text:'HIGH: Patch PHP-CGI on Windows servers — CVE-2024-4577 mass exploitation underway', urg:'h' },
+  { text:'NORMAL: Review CISA KEV additions and map to your asset inventory', urg:'n' },
+  { text:'NORMAL: Enable PowerShell script block logging across all endpoints (ASR rule)', urg:'n' },
+  { text:'NORMAL: Brief finance and government employees on today\'s spear-phishing TTPs', urg:'n' },
+];
+
+const PIPE_STEPS = [
+  { label:'Make.com Trigger', desc:'6AM UTC · schedule webhook → Netlify fn', state:'ok' },
+  { label:'RSS Fetch & Parse', desc:'5 feeds · CISA · vendor advisories', state:'ok' },
+  { label:'Claude Haiku API', desc:'~$0.03-0.05/briefing · structured JSON', state:'ok' },
+  { label:'HTML Template Inject', desc:'briefings/[keyword-slug-YYYY-MM-DD].html', state:'ok' },
+  { label:'GitHub Push', desc:'Contents API · sitemap.xml · feed.xml · 29 category pages', state:'run' },
+  { label:'Netlify Auto-Deploy', desc:'Live within seconds of commit', state:'wait' },
+];
+
+// ── CLOCK ──
+function tick() {
+  const n=new Date(),p=x=>String(x).padStart(2,'0');
+  document.getElementById('clk').textContent=`${p(n.getUTCHours())}:${p(n.getUTCMinutes())}:${p(n.getUTCSeconds())}`;
+  document.getElementById('clk-d').textContent=n.toUTCString().slice(0,16).replace(',','')+' UTC';
+  const d=n.getUTCDate(),mo=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'][n.getUTCMonth()];
+  document.getElementById('bday').textContent=d;
+  document.getElementById('bmon').textContent=`${mo} ${n.getUTCFullYear()}`;
+}
+setInterval(tick,1000);tick();
+
+// ── THREAT LEVEL ──
+const TL=[{c:'elevated',t:'ELEVATED'},{c:'critical',t:'CRITICAL'},{c:'guarded',t:'GUARDED'}];
+let tli=0;
+function cycleThreat(){tli=(tli+1)%TL.length;const el=document.getElementById('tl-badge');el.className=`tl-badge ${TL[tli].c}`;document.getElementById('tl-text').textContent=TL[tli].t;}
+
+// ── FILTERS ──
+let fSev='all',fType='all',fInd='all';
+function setSev(b,v){document.querySelectorAll('[data-sev]').forEach(x=>x.classList.remove('on','cr','hi','me'));b.classList.add('on');if(v==='critical')b.classList.add('cr');if(v==='high')b.classList.add('hi');if(v==='medium')b.classList.add('me');fSev=v;pg=1;rebuildTable();}
+function setType(b,v){document.querySelectorAll('[data-tt]').forEach(x=>x.classList.remove('on'));b.classList.add('on');fType=v;pg=1;rebuildTable();}
+function setInd(b,v){document.querySelectorAll('[data-ind]').forEach(x=>x.classList.remove('on'));b.classList.add('on');fInd=v;pg=1;rebuildTable();}
+function setThreatCat(cat){
+  document.querySelectorAll('[id^="tc-"]').forEach(el=>{el.style.borderColor='';el.style.color='';});
+  document.querySelectorAll('[data-tt]').forEach(x=>x.classList.remove('on'));
+  const btn=document.querySelector(`[data-tt="${cat}"]`);
+  if(btn){btn.classList.add('on');fType=cat;}else fType=cat;
+  pg=1;rebuildTable();
+}
+
+// ── CHARTS ──
+Chart.defaults.color='#5a5a7a';
+Chart.defaults.borderColor='#1e1e2e';
+Chart.defaults.font.family="'Share Tech Mono', monospace";
+Chart.defaults.font.size=10;
+
+new Chart(document.getElementById('cLine'),{
+  type:'line',
+  data:{
+    labels:['May 21','May 22','May 23','May 24','May 25','May 26','May 27'],
+    datasets:[
+      {label:'Ransomware',data:[1200,1450,1100,1800,2100,1950,2400],borderColor:'#ff0044',backgroundColor:'rgba(255,0,68,.04)',tension:.4,borderWidth:1.5,pointRadius:3},
+      {label:'Phishing',data:[800,950,870,1100,1050,1200,1400],borderColor:'#ff6600',backgroundColor:'rgba(255,102,0,.04)',tension:.4,borderWidth:1.5,pointRadius:3},
+      {label:'Vuln Exploit',data:[400,380,520,490,610,580,720],borderColor:'#ffc300',backgroundColor:'rgba(255,195,0,.04)',tension:.4,borderWidth:1.5,pointRadius:3},
+      {label:'APT/C2',data:[200,310,280,350,400,380,460],borderColor:'#00c9ff',backgroundColor:'rgba(0,201,255,.04)',tension:.4,borderWidth:1.5,pointRadius:3},
+      {label:'Supply Chain',data:[80,120,95,180,160,210,280],borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,.04)',tension:.4,borderWidth:1.5,pointRadius:3},
+    ]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}}},scales:{x:{grid:{color:'#1e1e2e'}},y:{grid:{color:'#1e1e2e'},beginAtZero:true}}}
+});
+
+new Chart(document.getElementById('cPie'),{
+  type:'doughnut',
+  data:{
+    labels:['North America','Eastern Europe','East Asia','Latin America','Middle East','Other'],
+    datasets:[{data:[34,28,18,10,6,4],backgroundColor:['#ff0044','#ff6600','#ffc300','#00c9ff','#00ff88','#5a5a7a'],borderColor:'#0d0d14',borderWidth:2,hoverOffset:6}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:8,font:{size:9}}}},cutout:'55%'}
+});
+
+new Chart(document.getElementById('cBar'),{
+  type:'bar',
+  data:{
+    labels:['198.51.100.45','malware-cdn[.]ru','104.21.45.67','botnet-c2[.]xyz','203.0.113.88','evil-cdn[.]io','185.220.101.42','203.0.113.201','172.16.254.99','track-pixel[.]io'],
+    datasets:[{label:'Hits (24h)',data:[4820,3940,3210,2870,2340,1980,1650,1420,1180,940],
+      backgroundColor:(ctx)=>ctx.dataIndex<3?'rgba(255,0,68,.7)':ctx.dataIndex<6?'rgba(255,102,0,.7)':'rgba(0,201,255,.5)',
+      borderColor:(ctx)=>ctx.dataIndex<3?'#ff0044':ctx.dataIndex<6?'#ff6600':'#00c9ff',
+      borderWidth:1,borderRadius:3}]
+  },
+  options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1e1e2e'},beginAtZero:true},y:{grid:{display:false},ticks:{font:{size:9}}}}}
+});
+
+new Chart(document.getElementById('cHist'),{
+  type:'bar',
+  data:{
+    labels:['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100'],
+    datasets:[{label:'IOC Count',data:[12,18,24,45,89,134,210,298,387,442],backgroundColor:'rgba(0,201,255,.5)',borderColor:'#00c9ff',borderWidth:1,borderRadius:2}]
+  },
+  options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'#1e1e2e'},title:{display:true,text:'Confidence %',color:'#5a5a7a',font:{size:9}}},y:{grid:{color:'#1e1e2e'},beginAtZero:true}}}
+});
+
+// ── CVE GRID ──
+const cg=document.getElementById('cveGrid');
+CVE_DATA.forEach(c=>{
+  const pct=(c.cvss/10*100).toFixed(0);
+  const bc=c.cls==='cr'?'var(--crit)':c.cls==='hi'?'var(--high)':'var(--med)';
+  const el=document.createElement('div');
+  el.className=`cve-card ${c.cls}`;
+  el.onclick=()=>openCVEDrawer(c);
+  el.innerHTML=`
+    <div class="cve-id">${c.id}</div>
+    <div class="cve-title">${c.title}</div>
+    <div class="cve-row"><span class="cvss ${c.cvssLabel}">CVSS ${c.cvss}</span><span class="cve-meta">${c.vendor} · ${c.product}</span></div>
+    <div class="cve-row"><span class="cve-meta">${c.exploited?'🔴 EXPLOITED IN WILD':'⚠️ PoC Available'}</span></div>
+    <div class="cve-row" style="flex-wrap:wrap;gap:4px;margin-top:2px">${c.threatTypes.map(t=>`<span class="ftag ${t.replace('vulnerability-exploit','vulnerability')}">${t}</span>`).join('')}</div>
+    <div class="cve-bar"><div class="cve-bar-f" style="width:${pct}%;background:${bc}"></div></div>
+  `;
+  cg.appendChild(el);
+});
+
+// ── SECTOR GRID ──
+const sg2=document.getElementById('secGrid');
+SECTOR_DATA.forEach(s=>{
+  const el=document.createElement('div');
+  el.className='sc';
+  el.innerHTML=`<div class="stier" style="border-color:${s.color}33;color:${s.color}">TIER ${s.tier}</div><div class="sn">${s.name}</div><div class="ss">${s.sub}</div><div class="sv">${s.count.toLocaleString()}</div><div class="sl">IOCs (${s.pct}%)</div><div class="sd">${s.delta} 24h</div><div class="sbar"><div class="sbar-f" style="width:${s.pct}%;background:${s.color}"></div></div>`;
+  sg2.appendChild(el);
+});
+
+// ── CHECKLIST ──
+const clBody=document.getElementById('cl-body');
+CHECKLIST.forEach((item,i)=>{
+  const el=document.createElement('div');
+  el.className='cl-item';
+  el.innerHTML=`<div class="cl-cb" id="cb${i}"></div><div class="cl-text">${item.text}</div><div class="cl-urgency ${item.urg}">${item.urg==='u'?'URGENT':item.urg==='h'?'HIGH':'NORMAL'}</div>`;
+  el.onclick=()=>toggleCheck(i);
+  clBody.appendChild(el);
+});
+function toggleCheck(i){
+  const item=clBody.children[i];
+  item.classList.toggle('done');
+  const cb=document.getElementById(`cb${i}`);
+  cb.classList.toggle('checked');
+  const done=clBody.querySelectorAll('.done').length;
+  document.getElementById('cl-prog').textContent=`${done} / ${CHECKLIST.length} done`;
+}
+
+// ── TOP 5 ──
+const t5=document.getElementById('top5');
+TOP5.forEach(t=>{
+  const div=document.createElement('div');
+  div.className='threat-row';
+  div.onclick=()=>openBriefingThreatDrawer(t);
+  div.innerHTML=`<div class="threat-num">${t.n}.</div><div class="threat-info"><div class="threat-name">${t.name}</div><div class="threat-desc">${t.desc}</div><div class="threat-meta"><span class="sb2 ${t.sev}">${t.sev}</span>${t.types.map(x=>`<span class="ftag ${x.replace('vulnerability-exploit','vulnerability')}">${x}</span>`).join('')}<span style="font-family:var(--mono);font-size:10px;color:var(--tm)">${t.industry}</span></div></div>`;
+  t5.appendChild(div);
+});
+
+// ── FEED ──
+const fl=document.getElementById('feedList');
+FEED.forEach(f=>{
+  const el=document.createElement('div');
+  el.className=`fi ${f.sev}`;
+  el.onclick=()=>openFeedDrawer(f);
+  el.innerHTML=`<div class="fi-num">${f.n}. · ${f.src} · ${f.time}</div><div class="fi-hl">${f.hl}</div><div class="fi-meta">${f.tags.map(t=>`<span class="ftag ${t}">#${t}</span>`).join('')}${f.industries.map(i=>`<span style="font-family:var(--mono);font-size:9px;color:var(--tm);padding:1px 4px;border:1px solid var(--border);border-radius:2px">${i}</span>`).join('')}</div><div class="fi-ex">${f.excerpt}</div>`;
+  fl.appendChild(el);
+});
+
+// ── PIPELINE ──
+const pipeEl=document.getElementById('pipe');
+PIPE_STEPS.forEach(s=>{
+  pipeEl.innerHTML+=`<div class="pipe-step"><div class="pipe-dot ${s.state}">${s.state==='ok'?'✓':s.state==='run'?'⟳':'○'}</div><div class="pipe-info"><div class="pipe-name">${s.label}</div><div class="pipe-desc">${s.desc}</div></div></div>`;
+});
+
+// ── MALWARE BARS ──
+const mb2=document.getElementById('malBars');
+const mmax=MALWARE_DATA[0].count;
+MALWARE_DATA.forEach(m=>{
+  mb2.innerHTML+=`<div class="br-row"><div class="br-l" title="${m.name}">${m.name}</div><div class="br-t"><div class="br-f" style="width:${(m.count/mmax*100).toFixed(0)}%"></div></div><div class="br-v">${m.count}</div></div>`;
+});
+
+// ── TABLE ──
+const SEV_O={critical:0,high:1,medium:2,low:3};
+let sc=0,sa=false,pg=1;
+const RPP=10;
+
+function rebuildTable(){
+  let data=IOC.filter(r=>{
+    if(fSev!=='all'&&r.sev!==fSev)return false;
+    if(fType!=='all'&&!r.threatTypes.includes(fType))return false;
+    if(fInd!=='all'&&r.industry!==fInd)return false;
+    const q=document.getElementById('tSearch').value.toLowerCase();
+    if(q&&!r.indicator.toLowerCase().includes(q)&&!r.source.toLowerCase().includes(q)&&!r.industry.toLowerCase().includes(q))return false;
+    return true;
+  });
+  data.sort((a,b)=>{
+    let av,bv;
+    switch(sc){
+      case 3:av=SEV_O[a.sev];bv=SEV_O[b.sev];break;
+      case 4:av=a.threatTypes[0]||'';bv=b.threatTypes[0]||'';break;
+      case 7:av=a.conf;bv=b.conf;break;
+      default:const f=['date','indicator','type','sev','threatTypes','industry','source','conf'];av=a[f[sc]]||'';bv=b[f[sc]]||'';
+    }
+    if(av<bv)return sa?-1:1;if(av>bv)return sa?1:-1;return 0;
+  });
+  const total=data.length;
+  const pages=Math.max(1,Math.ceil(total/RPP));
+  if(pg>pages)pg=1;
+  const slice=data.slice((pg-1)*RPP,pg*RPP);
+  const tb=document.getElementById('tBody');
+  tb.innerHTML='';
+  slice.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.onclick=()=>openDrawer(r);
+    const tt=r.threatTypes.slice(0,2).map(t=>`<span class="tyb" style="font-size:9px">${t}</span>`).join(' ');
+    tr.innerHTML=`<td class="dt">${r.date}</td><td class="ind" title="${r.indicator}">${r.indicator}</td><td><span class="tyb">${r.type}</span></td><td><span class="sb2 ${r.sev}">${r.sev}</span></td><td>${tt}</td><td style="font-size:11px;color:var(--tm)">${r.industry}</td><td class="src">${r.source}</td><td><div style="display:flex;align-items:center;gap:5px"><div style="width:50px;height:4px;background:var(--border);border-radius:2px;overflow:hidden"><div style="width:${r.conf}%;height:100%;background:${r.conf>85?'var(--accent)':r.conf>65?'var(--accent2)':'var(--med)'};border-radius:2px"></div></div><span style="font-family:var(--mono);font-size:10px;color:var(--tm)">${r.conf}%</span></div></td>`;
+    tb.appendChild(tr);
+  });
+  document.getElementById('tCount').textContent=`Showing ${slice.length} of ${total} entries`;
+  document.getElementById('tCountB').textContent=`${total} total records`;
+  const pp=document.getElementById('tPages');
+  pp.innerHTML='';
+  for(let i=1;i<=pages;i++){const b=document.createElement('button');b.className=`pb${i===pg?' on':''}`;b.textContent=i;b.onclick=()=>{pg=i;rebuildTable();};pp.appendChild(b);}
+  document.querySelectorAll('thead th').forEach((th,i)=>{th.classList.toggle('sorted',i===sc);const a=th.querySelector('.sa');if(a)a.textContent=i===sc?(sa?'↑':'↓'):'↕';});
+}
+document.querySelectorAll('thead th').forEach((th,i)=>{th.addEventListener('click',()=>{if(i===sc)sa=!sa;else{sc=i;sa=true;}rebuildTable();});});
+rebuildTable();
+
+// ── DRAWERS ──
+function openDrawer(r){
+  document.getElementById('dr-ind').textContent=r.indicator;
+  document.getElementById('dr-body').innerHTML=`
+    <div class="ds"><div class="dst">Metadata</div>
+      <div class="dr-row"><span class="k">Date/Time</span><span class="v">${r.date}</span></div>
+      <div class="dr-row"><span class="k">IOC Type</span><span class="v">${r.type.toUpperCase()}</span></div>
+      <div class="dr-row"><span class="k">Severity</span><span class="v"><span class="sb2 ${r.sev}">${r.sev}</span></span></div>
+      <div class="dr-row"><span class="k">Confidence</span><span class="v">${r.conf}%</span></div>
+      <div class="dr-row"><span class="k">Industry</span><span class="v">${r.industry}</span></div>
+      <div class="dr-row"><span class="k">Source</span><span class="v">${r.source}</span></div>
+      <div class="dr-row"><span class="k">Threat Types</span><span class="v">${r.threatTypes.map(t=>`<span class="tyb" style="margin:1px">${t}</span>`).join(' ')}</span></div>
+    </div>
+    ${r.cve.length?`<div class="ds"><div class="dst">Associated CVEs</div><div>${r.cve.map(c=>`<span class="cc2">${c}</span>`).join('')}</div></div>`:''}
+    <div class="ds"><div class="dst">Malware Families</div><div>${r.malware.map(m=>`<span class="mc3">${m}</span>`).join('')}</div></div>
+    <div class="ds"><div class="dst">Recommended Mitigation</div>${r.mitig.map(m=>`<div class="mi2">${m}</div>`).join('')}</div>
+    <div class="ds"><div class="dst">Intelligence Context</div>
+      <div style="font-size:12px;color:var(--tm);line-height:1.65">Ingested from <strong style="color:var(--tp)">${r.source}</strong> and cross-referenced against MITRE ATT&amp;CK, STIX/TAXII feeds, and the <strong style="color:var(--tp)">defend.network</strong> schema. Confidence <strong style="color:var(--accent)">${r.conf}%</strong>. Briefing slug: <span style="color:var(--accent2);font-family:var(--mono);font-size:10px">/briefings/${r.indicator.toLowerCase().replace(/[^a-z0-9]/g,'-').slice(0,30)}-${r.date.slice(0,10)}</span></div>
+    </div>`;
+  showDr();
+}
+function openCVEDrawer(c){
+  document.getElementById('dr-ind').textContent=c.id;
+  document.getElementById('dr-body').innerHTML=`
+    <div class="ds"><div class="dst">CVE Details</div>
+      <div class="dr-row"><span class="k">CVE ID</span><span class="v" style="color:var(--crit)">${c.id}</span></div>
+      <div class="dr-row"><span class="k">CVSS Score</span><span class="v cvss ${c.cvssLabel}">${c.cvss} / 10.0</span></div>
+      <div class="dr-row"><span class="k">Vendor</span><span class="v">${c.vendor}</span></div>
+      <div class="dr-row"><span class="k">Product</span><span class="v">${c.product}</span></div>
+      <div class="dr-row"><span class="k">Patch Version</span><span class="v" style="color:var(--accent)">${c.patch}</span></div>
+      <div class="dr-row"><span class="k">Exploitation</span><span class="v" style="color:var(--crit)">${c.exploited?'🔴 ACTIVELY EXPLOITED IN WILD':'⚠️ PoC Available — Monitor'}</span></div>
+    </div>
+    <div class="ds"><div class="dst">Description</div><div style="font-size:13px;color:var(--tm);line-height:1.65">${c.desc}</div></div>
+    <div class="ds"><div class="dst">Affected Industries</div><div>${c.industry.map(i=>`<span class="tyb" style="margin:2px">${i}</span>`).join('')}</div></div>
+    <div class="ds"><div class="dst">Recommended Actions</div>
+      <div class="mi2">Apply ${c.patch} immediately — exploitation confirmed</div>
+      <div class="mi2">Hunt for indicators of compromise pre-patch</div>
+      <div class="mi2">Review exposure via CISA KEV catalog and asset inventory</div>
+      <div class="mi2">Enable enhanced logging on affected product during patch window</div>
+    </div>`;
+  showDr();
+}
+function openFeedDrawer(f){
+  document.getElementById('dr-ind').textContent=f.hl;
+  document.getElementById('dr-body').innerHTML=`
+    <div class="ds"><div class="dst">Briefing Metadata</div>
+      <div class="dr-row"><span class="k">Source</span><span class="v">${f.src}</span></div>
+      <div class="dr-row"><span class="k">Published</span><span class="v">${f.time}</span></div>
+      <div class="dr-row"><span class="k">Severity</span><span class="v"><span class="sb2 ${f.sev}">${f.sev}</span></span></div>
+      <div class="dr-row"><span class="k">URL Slug</span><span class="v" style="font-family:var(--mono);font-size:10px;color:var(--accent2)">/briefings/${f.slug}</span></div>
+      <div class="dr-row"><span class="k">Industries</span><span class="v">${f.industries.join(', ')}</span></div>
+      <div class="dr-row"><span class="k">Threat Types</span><span class="v">${f.threatTypes.join(', ')}</span></div>
+    </div>
+    <div class="ds"><div class="dst">Summary</div><div style="font-size:13px;color:var(--tm);line-height:1.65">${f.excerpt}</div></div>
+    <div class="ds"><div class="dst">Recommended Actions</div>
+      <div class="mi2">Review affected systems and apply relevant patches immediately</div>
+      <div class="mi2">Search internal logs for indicators related to this campaign</div>
+      <div class="mi2">Escalate to senior analyst if matching IOCs found in environment</div>
+      <div class="mi2">File intel report; update threat actor profiles in TIP</div>
+    </div>`;
+  showDr();
+}
+function openBriefingThreatDrawer(t){
+  document.getElementById('dr-ind').textContent=t.name;
+  document.getElementById('dr-body').innerHTML=`
+    <div class="ds"><div class="dst">Threat Summary</div>
+      <div class="dr-row"><span class="k">Severity</span><span class="v"><span class="sb2 ${t.sev}">${t.sev}</span></span></div>
+      <div class="dr-row"><span class="k">Industry</span><span class="v">${t.industry}</span></div>
+      <div class="dr-row"><span class="k">Threat Types</span><span class="v">${t.types.map(x=>`<span class="tyb" style="margin:1px">${x}</span>`).join(' ')}</span></div>
+    </div>
+    <div class="ds"><div class="dst">Description</div><div style="font-size:13px;color:var(--tm);line-height:1.65">${t.desc}</div></div>
+    <div class="ds"><div class="dst">Actions</div>
+      <div class="mi2">Immediately check asset inventory for exposure</div>
+      <div class="mi2">Apply relevant patches or mitigating controls</div>
+      <div class="mi2">Hunt for TTPs in SIEM across affected industries</div>
+      <div class="mi2">Brief relevant stakeholders and update risk register</div>
+    </div>`;
+  showDr();
+}
+function showDr(){document.getElementById('ov').classList.add('open');document.getElementById('dr').classList.add('open');}
+function closeDr(){document.getElementById('ov').classList.remove('open');document.getElementById('dr').classList.remove('open');}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr();});
+</script>
+</body>
+</html>
