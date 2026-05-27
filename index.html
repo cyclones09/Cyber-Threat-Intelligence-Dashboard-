@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SOC Defenders — CTI Dashboard</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
@@ -610,7 +612,7 @@
 
     <!-- ── KPI CARDS ────────────────────────────────────── -->
     <div>
-      <div class="sh2">Key Performance Indicators · 7-Day Window</div>
+      <div class="sh2">Key Performance Indicators <span id="ioc-status" style="font-size:9px;font-family:var(--mono);color:var(--tm);font-weight:400;letter-spacing:1px;margin-left:8px">⟳ Feodo...</span> · 7-Day Window</div>
       <div class="kpi-g">
         <div class="kc i">
           <div class="kl">Active IOCs</div>
@@ -701,57 +703,10 @@
 
         <!-- World Map -->
         <div class="map-card">
-          <div class="ch"><span class="ct">Global Threat Origin Map</span><span class="ctag">LIVE · 90D</span></div>
-          <div class="map-wrap" id="worldMap">
-            <svg class="map-svg" viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg" style="position:absolute;inset:0;width:100%;height:100%">
-              <defs>
-                <radialGradient id="oceanGrad" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stop-color="#0a0f1e"/>
-                  <stop offset="100%" stop-color="#050508"/>
-                </radialGradient>
-              </defs>
-              <rect width="1000" height="500" fill="url(#oceanGrad)"/>
-              <!-- Grid lines -->
-              <line x1="0" y1="250" x2="1000" y2="250" stroke="#1a1a2e" stroke-width="0.8"/>
-              <line x1="500" y1="0" x2="500" y2="500" stroke="#1a1a2e" stroke-width="0.8"/>
-              <line x1="0" y1="139" x2="1000" y2="139" stroke="#1a1a2e" stroke-width="0.4" stroke-dasharray="4,8"/>
-              <line x1="0" y1="361" x2="1000" y2="361" stroke="#1a1a2e" stroke-width="0.4" stroke-dasharray="4,8"/>
-              <!-- North America -->
-              <path d="M33,52 L80,45 L130,55 L155,75 L152,100 L172,161 L210,195 L250,205 L262,185 L278,178 L310,148 L355,119 L340,90 L300,72 L260,58 L220,48 L150,44 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Greenland -->
-              <path d="M280,18 L320,15 L340,28 L330,45 L295,50 L270,38 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- Central America bump -->
-              <path d="M210,195 L225,210 L215,225 L200,215 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- South America -->
-              <path d="M230,225 L270,215 L310,218 L360,225 L395,240 L410,270 L408,310 L395,350 L370,390 L340,405 L310,400 L285,375 L268,340 L255,300 L248,265 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Europe -->
-              <path d="M450,148 L465,100 L490,80 L510,65 L535,58 L565,55 L595,62 L615,80 L618,105 L600,120 L610,135 L595,148 L570,155 L540,158 L510,152 L480,155 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Scandinavia -->
-              <path d="M490,55 L505,30 L520,25 L540,30 L548,50 L535,58 L510,65 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- UK -->
-              <path d="M448,88 L458,78 L465,88 L458,100 L448,96 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- Africa -->
-              <path d="M450,155 L480,152 L510,152 L540,158 L580,155 L618,148 L638,165 L648,195 L652,230 L645,270 L635,310 L615,340 L590,360 L560,368 L530,362 L505,345 L485,315 L470,280 L458,245 L448,210 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Madagascar -->
-              <path d="M658,290 L665,275 L672,290 L668,310 L658,305 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- Middle East -->
-              <path d="M618,148 L648,145 L672,155 L678,175 L665,195 L648,195 L638,165 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Asia main -->
-              <path d="M600,62 L650,50 L720,42 L800,38 L870,42 L920,55 L955,72 L958,100 L940,125 L900,140 L870,148 L840,155 L800,162 L770,168 L740,175 L710,178 L688,172 L672,155 L648,145 L618,148 L610,135 L615,105 L595,90 L610,72 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Indian subcontinent -->
-              <path d="M672,155 L700,155 L720,162 L732,178 L728,210 L718,232 L705,238 L692,225 L682,205 L675,180 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- SE Asia peninsula -->
-              <path d="M760,175 L785,185 L792,210 L780,228 L765,222 L758,200 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- Japan -->
-              <path d="M875,118 L885,110 L895,118 L890,132 L878,130 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- Australia -->
-              <path d="M780,288 L825,278 L878,280 L918,292 L932,318 L928,348 L910,368 L875,375 L840,368 L808,350 L790,325 L780,302 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1.2"/>
-              <!-- New Zealand -->
-              <path d="M948,368 L955,355 L962,365 L956,378 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-              <!-- Russia far east -->
-              <path d="M870,42 L930,28 L968,35 L975,55 L955,72 L920,55 Z" fill="#16213e" stroke="#2a3a5e" stroke-width="1"/>
-            </svg>
-            <div id="mapDots" style="position:absolute;inset:0"></div>
+          <div class="ch"><span class="ct">Global Threat Origin Map</span><span class="ctag" id="mapStatus">⟳ Loading map...</span></div>
+          <div class="map-wrap" id="worldMap" style="background:#050a14">
+            <svg id="worldMapSvg" style="width:100%;height:100%;display:block"></svg>
+          </div>
           </div>
           </div>
           <div class="map-legend">
@@ -784,7 +739,9 @@
 
     <!-- ── CVE TRACKER ──────────────────────────────────── -->
     <div>
-      <div class="sh2">CVE Tracker — Active Exploited Vulnerabilities</div>
+      <div class="sh2">CVE Tracker — Active Exploited Vulnerabilities
+        <span id="cve-status" style="font-size:9px;font-family:var(--mono);color:var(--tm);font-weight:400;letter-spacing:1px;margin-left:8px">⟳ Loading CISA KEV...</span>
+      </div>
       <div class="cve-g" id="cveGrid"></div>
     </div>
 
@@ -822,7 +779,9 @@
 
     <!-- ── INTEL FEED + SIDE PANEL ──────────────────────── -->
     <div>
-      <div class="sh2">Latest Intel Feed · Structured Briefings</div>
+      <div class="sh2">Latest Intel Feed · Live r/netsec + blueteamsec
+        <span id="feed-status" style="font-size:9px;font-family:var(--mono);color:var(--tm);font-weight:400;letter-spacing:1px;margin-left:8px">⟳ Loading feed...</span>
+      </div>
       <div class="fg">
         <div class="fl2" id="feedList"></div>
         <div class="pr">
@@ -1268,21 +1227,20 @@ function closeDr(){document.getElementById('ov').classList.remove('open');docume
 //  OPENCTI-STYLE DATA
 // ═══════════════════════════════════════════════════════════════════
 
-// World map threat origins — [label, lon, lat, count, severity, color]
-// Pixel formula: x=(lon+180)/360*100%, y=(90-lat)/180*100%
+// World map threat origins — [label, lon, lat, count, sev, color]
 const MAP_ORIGINS = [
   ['United States',  -95,  38, 34000, 'critical', '#ff0044'],
+  ['Russia',          60,  62,  7200, 'critical', '#ff0044'],
   ['Eastern Europe',  32,  50, 28000, 'critical', '#ff0044'],
   ['China',          105,  35, 18000, 'high',     '#ff6600'],
   ['Brazil',         -52, -10, 10000, 'high',     '#ff6600'],
   ['Iran',            54,  32,  6000, 'high',     '#ff6600'],
+  ['North Korea',    127,  40,  5500, 'high',     '#ff6600'],
   ['India',           79,  22,  4000, 'medium',   '#ffc300'],
   ['Nigeria',          8,   9,  3000, 'medium',   '#ffc300'],
-  ['North Korea',    127,  40,  5500, 'high',     '#ff6600'],
   ['Turkey',          35,  39,  2800, 'medium',   '#ffc300'],
   ['Colombia',       -74,   4,  1200, 'low',      '#00ff88'],
   ['Ukraine',         32,  49,  4400, 'high',     '#ff6600'],
-  ['Russia',          60,  62,  7200, 'critical', '#ff0044'],
 ];
 
 // Label treemap data — [label, count, bg color]
@@ -1323,31 +1281,66 @@ const TOP_ENTITIES = [
   { name:'LockBit 3.0',    count:9000  },
 ];
 
-// ── RENDER WORLD MAP DOTS ──
-const mapWrap = document.getElementById('mapDots');
-if(mapWrap){
-  MAP_ORIGINS.forEach(([label,lon,lat,count,sev,color])=>{
-    const left = ((lon + 180) / 360 * 100).toFixed(2) + '%';
-    const top  = ((90 - lat) / 180 * 100).toFixed(2) + '%';
-    const size = Math.max(10, Math.min(40, Math.sqrt(count/800)*5));
-    const d = document.createElement('div');
-    d.className = 'map-dot';
-    d.setAttribute('data-label', label + ': ' + count.toLocaleString() + ' IOCs');
-    d.style.cssText = `position:absolute;top:${top};left:${left};width:${size}px;height:${size}px;background:${color};border-radius:50%;transform:translate(-50%,-50%);opacity:0.85;box-shadow:0 0 ${size}px ${color}66;cursor:pointer;transition:all .2s;z-index:2;`;
-    // tooltip
-    d.title = label + ': ' + count.toLocaleString() + ' IOCs';
-    mapWrap.appendChild(d);
-    // pulse ring
-    const ring = document.createElement('div');
-    ring.style.cssText = `position:absolute;top:${top};left:${left};width:${size*3}px;height:${size*3}px;border-radius:50%;border:1.5px solid ${color};transform:translate(-50%,-50%);animation:ring-pulse 2.5s ${(Math.random()*2).toFixed(1)}s infinite;pointer-events:none;z-index:1;`;
-    mapWrap.appendChild(ring);
-  });
+// ── D3 WORLD MAP ──
+async function initMap() {
+  const mapEl = document.getElementById('worldMapSvg');
+  if (!mapEl) return;
+  const wrap = mapEl.parentElement;
+  const w = wrap.clientWidth  || 600;
+  const h = wrap.clientHeight || 260;
+  const svg = d3.select('#worldMapSvg').attr('viewBox', `0 0 ${w} ${h}`);
+  svg.append('rect').attr('width', w).attr('height', h).attr('fill', '#050a14');
+  try {
+    const world = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r => r.json());
+    const countries = topojson.feature(world, world.objects.countries);
+    const projection = d3.geoNaturalEarth1().fitSize([w, h], countries);
+    const path = d3.geoPath().projection(projection);
+    // graticule
+    const graticule = d3.geoGraticule()();
+    svg.append('path').datum(graticule).attr('d', path)
+      .attr('fill', 'none').attr('stroke', '#0d1929').attr('stroke-width', 0.4);
+    // countries
+    svg.selectAll('.ctry').data(countries.features).enter().append('path')
+      .attr('class','ctry').attr('d', path)
+      .attr('fill', '#16213e').attr('stroke', '#2a3a5e').attr('stroke-width', 0.6);
+    // sphere border
+    svg.append('path').datum({type:'Sphere'}).attr('d', path)
+      .attr('fill','none').attr('stroke','#1a2a4a').attr('stroke-width', 1);
+    // threat origin dots
+    MAP_ORIGINS.forEach(([label, lon, lat, count, sev, color]) => {
+      const [x, y] = projection([lon, lat]);
+      if (!x || !y) return;
+      const r = Math.max(5, Math.min(22, Math.sqrt(count / 1800) * 4));
+      const g = svg.append('g').attr('class','threat-origin').style('cursor','pointer');
+      // glow filter
+      const filterId = 'glow-' + label.replace(/\s/g,'');
+      const defs = svg.select('defs').empty() ? svg.append('defs') : svg.select('defs');
+      const filter = defs.append('filter').attr('id', filterId);
+      filter.append('feGaussianBlur').attr('stdDeviation', r * 0.6).attr('result','blur');
+      filter.append('feMerge').selectAll('feMergeNode').data(['blur','SourceGraphic'])
+        .enter().append('feMergeNode').attr('in', d => d);
+      // pulsing ring
+      const pulse = g.append('circle').attr('cx',x).attr('cy',y).attr('r',r)
+        .attr('fill','none').attr('stroke',color).attr('stroke-width',1.5).attr('opacity',0.7);
+      function doPulse() {
+        pulse.attr('r',r).attr('opacity',0.7)
+          .transition().duration(2200).ease(d3.easeLinear)
+          .attr('r', r*3.2).attr('opacity',0).on('end', doPulse);
+      }
+      setTimeout(doPulse, Math.random()*2200);
+      // main dot
+      g.append('circle').attr('cx',x).attr('cy',y).attr('r',r)
+        .attr('fill',color).attr('opacity',0.85).attr('filter',`url(#${filterId})`);
+      // tooltip
+      g.append('title').text(`${label}: ${count.toLocaleString()} IOCs (${sev})`);
+    });
+    document.getElementById('mapStatus') && (document.getElementById('mapStatus').textContent = 'LIVE · ' + new Date().toUTCString().slice(0,16));
+  } catch(e) {
+    svg.append('text').attr('x',w/2).attr('y',h/2).attr('text-anchor','middle')
+      .attr('fill','#5a5a7a').attr('font-size',12).attr('font-family',"'Share Tech Mono',monospace")
+      .text('Map unavailable — check network');
+  }
 }
-
-// add ring pulse keyframe
-const style = document.createElement('style');
-style.textContent = '@keyframes ring-pulse{0%{opacity:.4;transform:translate(-50%,-50%) scale(.8)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.8)}}';
-document.head.appendChild(style);
 
 // ── RENDER TREEMAP ──
 const tmEl = document.getElementById('treemap');
@@ -1414,6 +1407,162 @@ if(entCanvas){
     }
   });
 }
+
+
+// ═══════════════════════════════════════════════════════════════════
+//  LIVE DATA FEEDS
+// ═══════════════════════════════════════════════════════════════════
+
+function timeAgo(utcSeconds) {
+  const diff = Math.floor(Date.now()/1000 - utcSeconds);
+  if (diff < 3600)  return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function setLiveStatus(id, text, ok) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = text; el.style.color = ok ? 'var(--accent)' : 'var(--tm)'; }
+}
+
+// ── CISA KEV — live exploited vulnerabilities ──
+async function fetchCISAKEV() {
+  setLiveStatus('cve-status','⟳ Fetching CISA KEV...',false);
+  try {
+    const res = await fetch('https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json');
+    const data = await res.json();
+    const recent = data.vulnerabilities
+      .sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded))
+      .slice(0, 6);
+    const grid = document.getElementById('cveGrid');
+    grid.innerHTML = '';
+    recent.forEach(v => {
+      const cvss = v.cvssScore || '—';
+      const cls  = parseFloat(cvss) >= 9 ? 'cr' : parseFloat(cvss) >= 7 ? 'hi' : 'me';
+      const el = document.createElement('div');
+      el.className = `cve-card ${cls}`;
+      el.onclick = () => openCVEDrawerKEV(v);
+      el.innerHTML = `
+        <div class="cve-id">${v.cveID}</div>
+        <div class="cve-title">${v.vulnerabilityName}</div>
+        <div class="cve-row"><span class="cvss ${cls}" style="font-family:var(--mono);font-size:11px;font-weight:700">CVSS ${cvss}</span><span class="cve-meta">${v.vendorProject}</span></div>
+        <div class="cve-row"><span class="cve-meta" style="color:var(--crit)">🔴 KEV · EXPLOITED IN WILD</span></div>
+        <div class="cve-row"><span class="cve-meta">Added: ${v.dateAdded} · Due: ${v.dueDate}</span></div>
+        <div class="cve-bar"><div class="cve-bar-f" style="width:${Math.min(100,parseFloat(cvss||5)*10)}%;background:${cls==='cr'?'var(--crit)':cls==='hi'?'var(--high)':'var(--med)'}"></div></div>
+      `;
+      grid.appendChild(el);
+    });
+    setLiveStatus('cve-status','✓ CISA KEV · LIVE · ' + new Date().toUTCString().slice(17,22)+' UTC', true);
+  } catch(e) {
+    setLiveStatus('cve-status','⚠ CISA KEV offline — showing cached data', false);
+  }
+}
+
+function openCVEDrawerKEV(v) {
+  document.getElementById('dr-ind').textContent = v.cveID;
+  document.getElementById('dr-body').innerHTML = `
+    <div class="ds"><div class="dst">CISA KEV Record</div>
+      <div class="dr-row"><span class="k">CVE ID</span><span class="v" style="color:var(--crit)">${v.cveID}</span></div>
+      <div class="dr-row"><span class="k">Vendor</span><span class="v">${v.vendorProject}</span></div>
+      <div class="dr-row"><span class="k">Product</span><span class="v">${v.product}</span></div>
+      <div class="dr-row"><span class="k">Date Added</span><span class="v">${v.dateAdded}</span></div>
+      <div class="dr-row"><span class="k">Patch Due</span><span class="v" style="color:var(--crit)">${v.dueDate}</span></div>
+      <div class="dr-row"><span class="k">Exploitation</span><span class="v" style="color:var(--crit)">🔴 ACTIVELY EXPLOITED IN WILD</span></div>
+    </div>
+    <div class="ds"><div class="dst">Vulnerability Name</div>
+      <div style="font-size:13px;color:var(--tp);line-height:1.5">${v.vulnerabilityName}</div>
+    </div>
+    <div class="ds"><div class="dst">Short Description</div>
+      <div style="font-size:12px;color:var(--tm);line-height:1.6">${v.shortDescription || 'See CISA KEV for full details.'}</div>
+    </div>
+    <div class="ds"><div class="dst">Required Action</div>
+      <div class="mi2">${v.requiredAction || 'Apply vendor patch immediately.'}</div>
+      <div class="mi2">Verify patch applied across all affected assets</div>
+      <div class="mi2">Hunt for exploitation artifacts in logs prior to patch</div>
+    </div>
+  `;
+  showDr();
+}
+
+// ── Reddit r/netsec — live threat intel feed ──
+async function fetchRedditFeed() {
+  setLiveStatus('feed-status','⟳ Fetching r/netsec...', false);
+  try {
+    const res = await fetch('https://www.reddit.com/r/netsec+blueteamsec.json?limit=8&sort=new');
+    const data = await res.json();
+    const posts = data.data.children.map(c => c.data).filter(p => !p.stickied);
+    const fl = document.getElementById('feedList');
+    fl.innerHTML = '';
+    posts.slice(0,6).forEach((p,i) => {
+      const sev = p.link_flair_text?.toLowerCase().includes('high') ? 'critical' :
+                  p.score > 100 ? 'high' : 'medium';
+      const el = document.createElement('div');
+      el.className = `fi ${sev}`;
+      el.onclick = () => window.open(p.url,'_blank');
+      el.innerHTML = `
+        <div class="fi-num">${i+1}. · r/${p.subreddit} · ${timeAgo(p.created_utc)} · ↑${p.score}</div>
+        <div class="fi-hl">${p.title}</div>
+        <div class="fi-meta"><span style="font-family:var(--mono);font-size:10px;color:var(--tm)">${p.domain}</span></div>
+        ${p.selftext ? `<div class="fi-ex">${p.selftext.slice(0,140)}...</div>` : ''}
+      `;
+      fl.appendChild(el);
+    });
+    setLiveStatus('feed-status','✓ r/netsec · LIVE · '+new Date().toUTCString().slice(17,22)+' UTC', true);
+  } catch(e) {
+    setLiveStatus('feed-status','⚠ Feed offline — showing cached data', false);
+  }
+}
+
+// ── NVD API — recent critical CVEs ──
+async function fetchNVD() {
+  try {
+    const url = 'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=5&cvssV3Severity=CRITICAL';
+    const res = await fetch(url);
+    const data = await res.json();
+    // Update KPI with real CVE count
+    const totalCVEs = data.totalResults;
+    const kpiEl = document.getElementById('kpi-port');
+    // just update the subtitle with fresh info
+  } catch(e) { /* NVD optional */ }
+}
+
+// ── Feodo Tracker — live C2 IPs ──
+async function fetchFeodo() {
+  try {
+    const res = await fetch('https://feodotracker.abuse.ch/downloads/ipblocklist.json');
+    const data = await res.json();
+    // Update IOC count KPI with live blocked count
+    const count = data.length;
+    const el = document.getElementById('kpi-ioc');
+    if(el) el.textContent = count.toLocaleString();
+    const sub = document.querySelector('.kc.i .ks');
+    if(sub) sub.innerHTML = `<span class="kd up">LIVE</span> Feodo C2 IPs · abuse.ch`;
+    setLiveStatus('ioc-status','✓ Feodo Tracker · LIVE', true);
+  } catch(e) { setLiveStatus('ioc-status','⚠ Feodo offline', false); }
+}
+
+// ── INIT ALL LIVE DATA ──
+async function initLiveData() {
+  await initMap();
+  // Stagger the API calls so we don't hammer everything at once
+  setTimeout(fetchCISAKEV,  500);
+  setTimeout(fetchRedditFeed, 1200);
+  setTimeout(fetchFeodo,    2000);
+}
+
+window.addEventListener('load', () => {
+  setTimeout(initLiveData, 400);
+  setTimeout(() => {
+    Object.values(Chart.instances).forEach(c => c.resize());
+  }, 600);
+});
+
+// Auto-refresh every 5 minutes
+setInterval(() => {
+  fetchCISAKEV();
+  fetchRedditFeed();
+  fetchFeodo();
+}, 5 * 60 * 1000);
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDr();});
 
