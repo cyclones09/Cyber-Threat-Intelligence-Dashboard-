@@ -11,3 +11,6 @@ lxml>=5.0
 pydantic>=2.5,<3.0
 pydantic-settings>=2.1,<3.0
 PyYAML>=6.0
+# LLM layer (optional — query refinement, result filtering, summaries).
+# The pipeline runs without it; install + set ANTHROPIC_API_KEY to enable.
+anthropic>=0.40,<1.0

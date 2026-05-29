@@ -46,6 +46,28 @@ CREATE TABLE IF NOT EXISTS runs (
     findings    INTEGER,
     notes       TEXT
 );
+
+CREATE TABLE IF NOT EXISTS investigations (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at      TEXT,
+    objective       TEXT,
+    refined_queries TEXT,
+    sources_count   INTEGER,
+    findings_count  INTEGER,
+    summary         TEXT,
+    source_links    TEXT
+);
+
+CREATE TABLE IF NOT EXISTS osint (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at     TEXT,
+    connector      TEXT,
+    selector_type  TEXT,
+    selector_value TEXT,
+    ok             INTEGER,
+    findings       TEXT,
+    note           TEXT
+);
 """
 
 
@@ -114,6 +136,61 @@ class Database:
                  ",".join(sources), posts_seen, findings, notes),
             )
 
+    def log_investigation(self, objective: str, refined: list[str],
+                          sources_count: int, findings_count: int,
+                          summary: str, source_links: list[str]) -> int:
+        with self.connect() as con:
+            cur = con.execute(
+                """INSERT INTO investigations
+                   (created_at, objective, refined_queries, sources_count,
+                    findings_count, summary, source_links)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (datetime.now(timezone.utc).isoformat(), objective,
+                 json.dumps(refined), sources_count, findings_count, summary,
+                 json.dumps(source_links)),
+            )
+            return cur.lastrowid
+
+    def save_osint(self, result: dict) -> None:
+        with self.connect() as con:
+            con.execute(
+                """INSERT INTO osint
+                   (created_at, connector, selector_type, selector_value, ok,
+                    findings, note)
+                   VALUES (?,?,?,?,?,?,?)""",
+                (datetime.now(timezone.utc).isoformat(), result["connector"],
+                 result["selector_type"], result["selector_value"],
+                 1 if result["ok"] else 0, json.dumps(result["findings"]),
+                 result.get("note", "")),
+            )
+
+    def investigations(self, limit: int = 50) -> list[dict]:
+        with self.connect() as con:
+            rows = con.execute(
+                "SELECT * FROM investigations ORDER BY id DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["refined_queries"] = json.loads(d.get("refined_queries") or "[]")
+            d["source_links"] = json.loads(d.get("source_links") or "[]")
+            out.append(d)
+        return out
+
+    def osint_results(self, limit: int = 500) -> list[dict]:
+        with self.connect() as con:
+            rows = con.execute(
+                "SELECT * FROM osint ORDER BY id DESC LIMIT ?", (limit,),
+            ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["ok"] = bool(d["ok"])
+            d["findings"] = json.loads(d.get("findings") or "[]")
+            out.append(d)
+        return out
+
     def set_reviewed(self, fingerprint: str, reviewed: bool = True) -> None:
         with self.connect() as con:
             con.execute(
@@ -180,9 +257,12 @@ class Database:
                 "SELECT COUNT(DISTINCT author) c FROM findings"
             ).fetchone()["c"]
             runs = con.execute("SELECT COUNT(*) c FROM runs").fetchone()["c"]
+            invs = con.execute(
+                "SELECT COUNT(*) c FROM investigations").fetchone()["c"]
         return {
             "findings": total, "high_confidence": high,
             "watchlist_hits": watch, "actors": authors, "runs": runs,
+            "investigations": invs,
         }
 
 

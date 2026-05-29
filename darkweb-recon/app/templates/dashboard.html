@@ -66,11 +66,30 @@
 <body>
 <header>
   <h1>◆ OBSIDIAN</h1>
-  <span class="sub">DARK WEB FORUM RECON · THREAT-ACTOR DISCOVERY</span>
+  <span class="sub">DARK WEB OSINT · THREAT-ACTOR DISCOVERY</span>
   <span class="badge" id="torbadge">tor: checking…</span>
+  <span class="badge" id="llmbadge" style="margin-left:12px">llm: …</span>
 </header>
 
 <div class="wrap">
+  <div class="panel" style="margin-bottom:14px">
+    <h2>investigate — search dark web by name / brand / domain</h2>
+    <div class="body">
+      <div class="controls" style="margin-bottom:0">
+        <input type="text" id="objective" placeholder="e.g. Jane Doe, CEO of Acme Corp  /  acme-corp.com"
+               style="flex:1;min-width:280px" />
+        <label class="muted"><input type="checkbox" id="enrich" checked /> OSINT pivot</label>
+        <button class="primary" id="investigatebtn">▶ INVESTIGATE</button>
+        <span id="invstatus"></span>
+      </div>
+      <div id="invresult" style="display:none;margin-top:12px">
+        <div class="muted" id="invmeta"></div>
+        <div id="invsummary" style="margin-top:8px;white-space:pre-wrap"></div>
+        <div id="invsources" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="row" id="kpis"></div>
 
   <div class="controls">
@@ -87,12 +106,14 @@
     <button id="refresh">⟳ REFRESH</button>
     <a id="json" href="/api/export/json" download>EXPORT JSON</a>
     <a id="csv" href="/api/export/csv" download>EXPORT IOC CSV</a>
+    <a id="maltego" href="/api/export/maltego" download>EXPORT MALTEGO</a>
     <span id="status"></span>
   </div>
 
   <div class="tabs">
     <button class="active" data-tab="findings">FINDINGS</button>
     <button data-tab="actors">THREAT ACTORS</button>
+    <button data-tab="osint">OSINT PIVOTS</button>
   </div>
 
   <div class="panel" id="findings-panel">
@@ -111,6 +132,11 @@
   <div class="panel" id="actors-panel" style="display:none">
     <h2>threat-actor leaderboard</h2>
     <div class="body scroll" id="actors-body"></div>
+  </div>
+
+  <div class="panel" id="osint-panel" style="display:none">
+    <h2>osint pivots — sherlock (usernames) · shodan (infra)</h2>
+    <div class="body scroll" id="osint-body"></div>
   </div>
 
   <div class="legal">
@@ -181,6 +207,50 @@ async function loadActors(){
     </div>`).join('') || '<span class="muted">no actors yet</span>';
 }
 
+async function loadOsint(){
+  const data = await (await fetch('/api/osint')).json();
+  $('#osint-body').innerHTML = data.results.map(r => `
+    <div class="actor-card">
+      <div><span class="name">${esc(r.connector)}</span>
+        <span class="muted"> · ${esc(r.selector_type)}: ${esc(r.selector_value)} · ${esc(r.note)}</span></div>
+      ${(r.findings||[]).map(f=>`<div class="sel">${esc(JSON.stringify(f))}</div>`).join('')}
+    </div>`).join('') || '<span class="muted">no OSINT pivots yet — run an investigation with OSINT enabled</span>';
+}
+
+async function loadLlm(){
+  try{
+    const l = await (await fetch('/api/llm')).json();
+    $('#llmbadge').textContent = l.available ? `llm: ${l.model}` : 'llm: off (no API key)';
+    $('#llmbadge').style.color = l.available ? 'var(--green)' : 'var(--dim)';
+  }catch(e){ $('#llmbadge').textContent='llm: ?'; }
+}
+
+$('#investigatebtn').onclick = async () => {
+  const objective = $('#objective').value.trim();
+  if(!objective){ $('#invstatus').textContent='enter an objective'; return; }
+  $('#invstatus').textContent='investigating… (discover → scrape → analyze → enrich)';
+  $('#investigatebtn').disabled = true;
+  try{
+    const r = await (await fetch('/api/investigate',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({objective, enrich:$('#enrich').checked})
+    })).json();
+    if(r.error){ $('#invstatus').textContent='error: '+r.error; }
+    else{
+      $('#invstatus').textContent =
+        `done · ${r.discovered} discovered · ${r.scraped} scraped · ${r.matched} matched · ${r.new_findings} new`;
+      $('#invresult').style.display='';
+      $('#invmeta').textContent =
+        `refined: ${r.refined_queries.join(' | ')}  (llm ${r.llm_enabled?'on':'off'})`;
+      $('#invsummary').textContent = r.summary;
+      $('#invsources').innerHTML = '<b class="muted">SOURCE LINKS:</b><br>' +
+        (r.source_links||[]).map(u=>`<div class="sel">${esc(u)}</div>`).join('');
+    }
+  }catch(e){ $('#invstatus').textContent='error: '+e; }
+  $('#investigatebtn').disabled = false;
+  loadKpis(); loadFindings(); loadActors(); loadOsint();
+};
+
 $('#scanbtn').onclick = async () => {
   $('#status').textContent = 'scanning…'; $('#scanbtn').disabled = true;
   try{
@@ -190,7 +260,7 @@ $('#scanbtn').onclick = async () => {
   $('#scanbtn').disabled = false;
   loadKpis(); loadFindings(); loadActors();
 };
-$('#refresh').onclick = () => { loadKpis(); loadFindings(); loadActors(); };
+$('#refresh').onclick = () => { loadKpis(); loadFindings(); loadActors(); loadOsint(); };
 $('#minscore').onchange = loadFindings; $('#conf').onchange = loadFindings;
 
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
@@ -199,9 +269,10 @@ document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   const t = b.dataset.tab;
   $('#findings-panel').style.display = t==='findings'?'':'none';
   $('#actors-panel').style.display = t==='actors'?'':'none';
+  $('#osint-panel').style.display = t==='osint'?'':'none';
 });
 
-loadTor(); loadKpis(); loadFindings(); loadActors();
+loadTor(); loadLlm(); loadKpis(); loadFindings(); loadActors(); loadOsint();
 </script>
 </body>
 </html>

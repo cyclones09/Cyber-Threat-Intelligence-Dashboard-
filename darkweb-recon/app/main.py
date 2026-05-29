@@ -6,13 +6,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import Body, FastAPI, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse, Response
 
-from . import __version__
+from . import __version__, llm, maltego
 from .config import Settings, Taxonomy
 from .db import Database
 from .exporters import findings_to_csv, findings_to_json
+from .investigate import investigate
 from .scraper import run_scan
 from .tor import TorClient
 
@@ -73,6 +74,32 @@ async def api_scan() -> dict:
     return await run_scan(settings, taxonomy, db)
 
 
+@app.post("/api/investigate")
+async def api_investigate(payload: dict = Body(...)) -> dict:
+    objective = (payload or {}).get("objective", "").strip()
+    if not objective:
+        return {"error": "objective is required"}
+    enrich = bool((payload or {}).get("enrich", True))
+    return await investigate(objective, settings, taxonomy, db, enrich=enrich)
+
+
+@app.get("/api/investigations")
+async def api_investigations(limit: int = Query(50, le=200)) -> dict:
+    rows = db.investigations(limit=limit)
+    return {"count": len(rows), "investigations": rows}
+
+
+@app.get("/api/osint")
+async def api_osint(limit: int = Query(200, le=1000)) -> dict:
+    rows = db.osint_results(limit=limit)
+    return {"count": len(rows), "results": rows}
+
+
+@app.get("/api/llm")
+async def api_llm() -> dict:
+    return {"available": llm.available(), "model": llm.MODEL}
+
+
 @app.get("/api/export/json")
 async def export_json() -> Response:
     rows = db.findings(limit=10000)
@@ -89,4 +116,21 @@ async def export_csv(defang: bool = True) -> PlainTextResponse:
     return PlainTextResponse(
         content=findings_to_csv(rows, defang=defang),
         headers={"Content-Disposition": "attachment; filename=obsidian_iocs.csv"},
+    )
+
+
+@app.get("/api/export/maltego")
+async def export_maltego() -> PlainTextResponse:
+    return PlainTextResponse(
+        content=maltego.to_csv(db.actors(limit=500)),
+        headers={"Content-Disposition": "attachment; filename=obsidian_maltego.csv"},
+    )
+
+
+@app.get("/api/export/graph")
+async def export_graph() -> Response:
+    return Response(
+        content=maltego.to_graph_json(db.actors(limit=500)),
+        media_type="application/json",
+        headers={"Content-Disposition": "attachment; filename=obsidian_graph.json"},
     )

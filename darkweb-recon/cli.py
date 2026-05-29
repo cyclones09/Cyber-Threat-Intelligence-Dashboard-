@@ -2,12 +2,14 @@
 """OBSIDIAN command-line interface.
 
 Examples:
-  python cli.py scan                 # run one scan cycle (honours config.yaml)
+  python cli.py investigate "Jane Doe, CEO of Acme"   # search-by-name pipeline
+  python cli.py scan                 # forum scan cycle (honours config.yaml)
   python cli.py scan --live          # force live Tor mode for this run
   python cli.py findings --min 15    # list findings with score >= 15
   python cli.py actors               # threat-actor leaderboard
   python cli.py tor-check            # verify Tor egress
   python cli.py export json -o out.json
+  python cli.py export maltego -o graph.csv
 """
 from __future__ import annotations
 
@@ -15,9 +17,11 @@ import argparse
 import asyncio
 import sys
 
+from app import llm, maltego
 from app.config import Settings, Taxonomy
 from app.db import Database
 from app.exporters import findings_to_csv, findings_to_json
+from app.investigate import investigate
 from app.scraper import run_scan
 from app.tor import TorClient
 
@@ -38,6 +42,26 @@ def cmd_scan(args) -> int:
     print(f"[+] sources : {', '.join(summary['sources'])}")
     print(f"[+] posts   : {summary['posts_seen']} seen, {summary['matched']} matched")
     print(f"[+] findings: {summary['new_findings']} new")
+    return 0
+
+
+def cmd_investigate(args) -> int:
+    settings, taxonomy, db = _ctx(args)
+    objective = " ".join(args.objective)
+    print(f"[*] investigating: {objective!r}  "
+          f"(mode={'demo' if settings.demo_mode else 'live'}, "
+          f"llm={'on' if llm.available() else 'off'})")
+    result = asyncio.run(investigate(objective, settings, taxonomy, db,
+                                     enrich=not args.no_enrich))
+    print(f"[+] refined queries: {', '.join(result['refined_queries'])}")
+    print(f"[+] discovered {result['discovered']} onion URLs, "
+          f"scraped {result['scraped']}, matched {result['matched']}, "
+          f"{result['new_findings']} new findings")
+    if result["osint_results"]:
+        hits = sum(len(r["findings"]) for r in result["osint_results"])
+        print(f"[+] OSINT: {len(result['osint_results'])} pivots, {hits} hits")
+    print("\n" + "=" * 60 + "\nINVESTIGATION SUMMARY\n" + "=" * 60)
+    print(result["summary"])
     return 0
 
 
@@ -86,8 +110,15 @@ async def _tor_check(settings: Settings) -> dict:
 
 def cmd_export(args) -> int:
     _, _, db = _ctx(args)
+    if args.format == "maltego":
+        out = maltego.to_csv(db.actors(limit=500))
+    elif args.format == "graph":
+        out = maltego.to_graph_json(db.actors(limit=500))
+    elif args.format == "json":
+        out = findings_to_json(db.findings(limit=10000))
+    else:
+        out = findings_to_csv(db.findings(limit=10000))
     rows = db.findings(limit=10000)
-    out = findings_to_json(rows) if args.format == "json" else findings_to_csv(rows)
     if args.output:
         with open(args.output, "w", encoding="utf-8") as fh:
             fh.write(out)
@@ -104,6 +135,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--demo", action="store_true", help="force offline demo mode")
     sub = p.add_subparsers(dest="cmd", required=True)
 
+    inv = sub.add_parser("investigate",
+                         help="search-by-name pipeline (discover->scrape->enrich)")
+    inv.add_argument("objective", nargs="+", help="name/brand/domain to investigate")
+    inv.add_argument("--no-enrich", action="store_true",
+                     help="skip OSINT pivoting (Sherlock/Shodan)")
+    inv.set_defaults(func=cmd_investigate)
+
     sub.add_parser("scan", help="run one scan cycle").set_defaults(func=cmd_scan)
 
     f = sub.add_parser("findings", help="list findings")
@@ -118,8 +156,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("tor-check", help="verify Tor egress").set_defaults(func=cmd_tor_check)
 
-    e = sub.add_parser("export", help="export findings")
-    e.add_argument("format", choices=["json", "csv"])
+    e = sub.add_parser("export", help="export findings / actor graph")
+    e.add_argument("format", choices=["json", "csv", "maltego", "graph"])
     e.add_argument("-o", "--output")
     e.set_defaults(func=cmd_export)
     return p

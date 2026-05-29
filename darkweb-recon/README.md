@@ -1,38 +1,51 @@
-# ◆ OBSIDIAN — Dark Web Forum Recon & Threat-Actor Discovery
+# ◆ OBSIDIAN — Dark Web OSINT & Threat-Actor Discovery
 
-A self-hosted CTI tool that crawls **authorized** dark-web forums over Tor,
-matches posts against a weighted keyword taxonomy, extracts threat-actor
-selectors (handles, Jabber/Tox/Telegram/Session IDs, PGP fingerprints, crypto
-wallets), scores each post, and surfaces the results through a FastAPI
-dashboard + REST API.
+A self-hosted CTI tool that **searches the dark web by name/brand/domain**,
+discovers `.onion` sources over Tor, matches content against a weighted keyword
+taxonomy, extracts threat-actor selectors (handles, Jabber/Tox/Telegram/Session
+IDs, PGP fingerprints, crypto wallets), **pivots those selectors through OSINT
+tools (Sherlock, Shodan, Maltego export)**, and writes an investigation summary
+with an **optional Claude LLM layer**.
 
-Built in the same spirit as a "no-npm, no-API-keys, runs-locally, your data
-never leaves your machine" pipeline: **Python · FastAPI · httpx · SQLite ·
-zero JS build step.** Runs **fully offline in demo mode** so you can trial the
-entire workflow with zero infrastructure.
+Stack: **Python · FastAPI · httpx · SQLite · zero JS build step.** Runs **fully
+offline in demo mode** so you can trial the entire workflow with zero
+infrastructure (no Tor, no API keys).
 
 > ⚠️ **For authorized defensive threat-intelligence use only.** Read the
 > [Legal & OPSEC](#legal--opsec) section before pointing this at anything live.
 
 ---
 
-## What it does (the pipeline)
+## Two workflows
+
+### A. Investigate — search by name (the primary, "Robin-style" flow)
 
 ```
-sources.yaml ─┐
-              ▼
-   [1] COLLECT   pull forum posts over Tor (socks5h) — or offline fixtures
-   [2] MATCH     weighted keyword taxonomy + your target watchlist
-   [3] EXTRACT   actor selectors: jabber/tox/telegram/session/icq/pgp/btc/eth/xmr
-   [4] SCORE     sum category weights + watchlist; rate confidence by corroboration
-   [5] STORE     SQLite, deduped by content fingerprint, with first/last seen
-   [6] SURFACE   dashboard + REST API + JSON/defanged-CSV export
+objective ─┐  e.g. "Jane Doe, CEO of Acme" / "acme-corp.com"
+           ▼
+ [1] REFINE     Claude expands the objective into dark-web search queries
+ [2] DISCOVER   query dark-web search engines (Ahmia, Torch…) → .onion URLs
+ [3] SCRAPE     pull those pages over Tor
+ [4] ANALYZE    weighted keyword match + threat scoring + selector extraction
+ [5] FILTER     Claude prunes noise, keeps real leads
+ [6] STORE      SQLite, deduped by content fingerprint
+ [7] ENRICH     pivot top actors' selectors via OSINT (Sherlock, Shodan)
+ [8] SUMMARY    Claude writes the investigation summary
 ```
 
-A post only becomes a **finding** if it matches at least one category, so the
-queue stays signal-heavy. Findings aggregate by author into a **threat-actor
-leaderboard** that rolls up every selector and category seen per handle — the
-starting point for attribution and law-enforcement referrals.
+You don't curate forum URLs — you type a name and the engine finds the sources.
+Every LLM step (1, 5, 8) **degrades to deterministic logic** when no API key is
+set, so the pipeline still runs and produces findings + a rollup summary.
+
+### B. Scan — monitor specific forums you already track
+
+```
+sources.yaml → COLLECT (Tor) → MATCH → EXTRACT → SCORE → STORE → SURFACE
+```
+
+Both workflows feed the same SQLite store, **threat-actor leaderboard**, and
+dashboard. A post only becomes a **finding** if it matches at least one
+category, so the queue stays signal-heavy.
 
 ---
 
@@ -42,20 +55,34 @@ starting point for attribution and law-enforcement referrals.
 cd darkweb-recon
 python3 -m pip install -r requirements.txt
 
-# Run one scan against the bundled fixtures
+# Search the dark web by name (the headline feature)
+python3 cli.py investigate "Jane Doe, CEO of Acme Corp acme-corp.com"
+
+# Or monitor specific forums
 python3 cli.py scan
 
 # Inspect results
 python3 cli.py findings --min 15
 python3 cli.py actors
 
-# Or use the dashboard
+# Or use the dashboard (has the investigate box)
 uvicorn app.main:app --reload      # http://127.0.0.1:8000
 ```
 
 `demo_mode: true` in `config.yaml` keeps everything offline. The fixtures in
 `app/sources/demo.py` are fabricated, format-valid samples — no real actors,
 handles, or wallets.
+
+### Enabling the LLM + OSINT pivots
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # enables query refine / filter / summary (Claude)
+export SHODAN_API_KEY=...             # enables Shodan infra pivots (free key works)
+# Sherlock username pivots work out of the box (built-in checker); if the
+# `sherlock` CLI is installed it's used automatically for fuller coverage.
+```
+
+All three are optional — without them the pipeline still runs deterministically.
 
 ---
 
@@ -118,12 +145,15 @@ watchlist:
 
 | Command | Description |
 |---|---|
-| `python3 cli.py scan` | Run one scan cycle (mode from `config.yaml`) |
+| `python3 cli.py investigate "<name/brand/domain>"` | Search-by-name pipeline |
+| `python3 cli.py investigate "<obj>" --no-enrich` | …without OSINT pivots |
+| `python3 cli.py scan` | Run one forum scan cycle (mode from `config.yaml`) |
 | `python3 cli.py --live scan` | Force live Tor mode for this run |
 | `python3 cli.py findings --min 15 --confidence high` | List findings |
 | `python3 cli.py actors` | Threat-actor leaderboard |
 | `python3 cli.py tor-check` | Verify Tor egress |
-| `python3 cli.py export json -o out.json` | Export findings |
+| `python3 cli.py export json -o out.json` | Export findings (json/csv) |
+| `python3 cli.py export maltego -o graph.csv` | Export Maltego graph (maltego/graph) |
 
 `--live` / `--demo` override `config.yaml` for a single invocation.
 
@@ -133,17 +163,22 @@ watchlist:
 
 | Method | Path | Description |
 |---|---|---|
-| `GET`  | `/` | Dashboard UI |
+| `GET`  | `/` | Dashboard UI (with the investigate box) |
+| `POST` | `/api/investigate` | Run the search-by-name pipeline (`{"objective": "...", "enrich": true}`) |
+| `GET`  | `/api/investigations?limit=` | Past investigations + summaries |
+| `GET`  | `/api/osint?limit=` | OSINT pivot results |
+| `GET`  | `/api/llm` | LLM availability + model |
 | `GET`  | `/api/stats` | KPI counters |
 | `GET`  | `/api/tor` | Tor egress status |
 | `GET`  | `/api/findings?min_score=&confidence=&source=&author=&limit=` | Findings |
 | `GET`  | `/api/actors?limit=` | Actor leaderboard |
-| `POST` | `/api/scan` | Trigger a scan cycle |
-| `GET`  | `/api/export/json` | Export all findings (JSON) |
-| `GET`  | `/api/export/csv?defang=true` | Export findings (defanged IOC CSV) |
+| `POST` | `/api/scan` | Trigger a forum scan cycle |
+| `GET`  | `/api/export/json` · `/api/export/csv?defang=true` | Findings export |
+| `GET`  | `/api/export/maltego` · `/api/export/graph` | Actor graph export |
 
-Schedule scans with cron/systemd-timer hitting `POST /api/scan`, or run
-`cli.py scan` on an interval.
+Schedule investigations/scans with cron/systemd-timer hitting the `POST`
+endpoints, or run `cli.py` on an interval. (Dark-web monitoring is *polling*,
+not real-time — expect minutes-to-hours per cycle.)
 
 ---
 
@@ -160,18 +195,25 @@ darkweb-recon/
     ├── config.py        # settings + taxonomy loaders (env overridable)
     ├── models.py        # RawPost / AnalyzedPost / KeywordHit
     ├── tor.py           # httpx-over-SOCKS client + egress check + NEWNYM
+    ├── discovery.py     # dark-web search-engine aggregator (Ahmia, …)
+    ├── scrape.py        # parallel onion page scraping → RawPost
     ├── matcher.py       # keyword matching, scoring, confidence
     ├── extractors.py    # selector extraction (handles/PGP/wallets)
-    ├── db.py            # SQLite persistence + actor aggregation
-    ├── scraper.py       # orchestration (collect → analyze → store)
+    ├── llm.py           # Claude: refine / filter / summary (optional)
+    ├── investigate.py   # search-by-name orchestrator (the Robin pipeline)
+    ├── scraper.py       # forum-scan orchestrator (collect → analyze → store)
+    ├── osint/           # pivot connectors: sherlock, shodan (+ base)
+    ├── maltego.py       # Maltego CSV + graph JSON export
+    ├── db.py            # SQLite persistence (findings/runs/investigations/osint)
     ├── exporters.py     # JSON / defanged CSV
     ├── main.py          # FastAPI app + dashboard
     ├── sources/         # pluggable forum adapters (base, generic_html, demo)
     └── templates/       # single-file dashboard (no JS build)
 ```
 
-Add a new forum type by subclassing `BaseSource` and registering it in
-`app/sources/__init__.py::build_source`.
+Extend it by: subclassing `BaseSource` (new forum type) in
+`app/sources/__init__.py::build_source`; adding a `SearchEngine` to
+`discovery.ENGINES`; or adding an OSINT connector under `app/osint/`.
 
 ---
 
@@ -182,7 +224,8 @@ python3 -m unittest discover -s tests -v
 ```
 
 Covers selector extraction, scoring/watchlist logic, the benign-post filter,
-end-to-end demo scan, and dedup-on-rescan.
+end-to-end demo scan + investigate pipeline, dedup-on-rescan, LLM graceful
+degradation, search-engine result parsing, and Maltego export.
 
 ---
 
