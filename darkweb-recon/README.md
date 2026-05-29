@@ -223,6 +223,34 @@ Extend it by: subclassing `BaseSource` (new forum type) in
 
 ---
 
+## Deploy
+
+**This is a run-it-locally tool.** It needs Tor, a persistent process, and a
+writable database, and it handles sensitive investigation data — so it does
+**not** belong on serverless/static hosts like Vercel, Netlify, or Lambda
+(no Tor, no long-running process, ephemeral filesystem), and it should never be
+exposed on a public URL. Run it on a machine you control.
+
+### Option 1 — local (fastest)
+```bash
+cd darkweb-recon
+pip install -r requirements.txt
+uvicorn app.main:app          # http://127.0.0.1:8000  (demo mode, no Tor needed)
+```
+
+### Option 2 — Docker (Tor bundled, one command)
+```bash
+cd darkweb-recon
+docker compose up --build      # http://127.0.0.1:8000
+```
+The image bundles Tor. It starts in demo mode; flip `OBSIDIAN_DEMO_MODE` to
+`"false"` in `docker-compose.yml` to start Tor and scan real sources from
+`sources.yaml`. The dashboard is published to **localhost only** by default
+(`127.0.0.1:8000`) — keep it that way (or behind a VPN/SSH tunnel); there is no
+built-in authentication.
+
+---
+
 ## Tests
 
 ```bash
