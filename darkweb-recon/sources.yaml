@@ -1,0 +1,32 @@
+# OBSIDIAN forum source registry
+# ---------------------------------------------------------------------------
+# Define the dark-web forums/markets to monitor. The `generic_html` adapter
+# scrapes any forum given CSS selectors for thread links and post bodies — no
+# code changes needed to add a new board.
+#
+# IMPORTANT: The .onion addresses below are deliberately PLACEHOLDERS. Populate
+# them with sources you are AUTHORIZED to monitor for your own threat
+# intelligence program. See README for legal/OPSEC guidance.
+# ---------------------------------------------------------------------------
+
+sources:
+  - name: "example_forum"
+    type: "generic_html"
+    enabled: true
+    # Hidden-service base URL. Replace with a real authorized source.
+    base_url: "http://exampleforumplaceholderonionaddress0000000000000000.onion"
+    # Board/section pages to enumerate threads from.
+    board_paths:
+      - "/index.php?board=marketplace"
+      - "/index.php?board=access"
+    selectors:
+      # Anchor elements linking to individual threads.
+      thread_link: "a.topic_link, td.subject a"
+      # Container(s) holding one post's text.
+      post_body: "div.post, div.inner, .messageText"
+      # Element holding the author handle for a post.
+      post_author: "a.member, .username, .poster a"
+      # Optional: thread title element.
+      thread_title: "h2.threadtitle, .topic_title"
+    # Require login? (cookie auth handled out of band — paste a Cookie header).
+    cookie: ""
