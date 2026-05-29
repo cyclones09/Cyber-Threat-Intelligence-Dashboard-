@@ -52,7 +52,8 @@ def cmd_investigate(args) -> int:
           f"(mode={'demo' if settings.demo_mode else 'live'}, "
           f"llm={'on' if llm.available() else 'off'})")
     result = asyncio.run(investigate(objective, settings, taxonomy, db,
-                                     enrich=not args.no_enrich))
+                                     enrich=not args.no_enrich,
+                                     spiderfoot=args.spiderfoot))
     print(f"[+] refined queries: {', '.join(result['refined_queries'])}")
     print(f"[+] discovered {result['discovered']} onion URLs, "
           f"scraped {result['scraped']}, matched {result['matched']}, "
@@ -140,6 +141,8 @@ def build_parser() -> argparse.ArgumentParser:
     inv.add_argument("objective", nargs="+", help="name/brand/domain to investigate")
     inv.add_argument("--no-enrich", action="store_true",
                      help="skip OSINT pivoting (Sherlock/Shodan)")
+    inv.add_argument("--spiderfoot", action="store_true",
+                     help="also run a SpiderFoot scan (needs SPIDERFOOT_URL; slow)")
     inv.set_defaults(func=cmd_investigate)
 
     sub.add_parser("scan", help="run one scan cycle").set_defaults(func=cmd_scan)

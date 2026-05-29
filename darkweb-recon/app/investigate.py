@@ -22,7 +22,7 @@ from .config import Settings, Taxonomy
 from .db import Database
 from .discovery import discover
 from .matcher import analyze_many
-from .osint import enrich_host, enrich_username
+from .osint import enrich_host, enrich_spiderfoot, enrich_username
 from .scrape import scrape_multiple
 
 
@@ -30,6 +30,7 @@ async def investigate(objective: str, settings: Settings | None = None,
                       taxonomy: Taxonomy | None = None,
                       db: Database | None = None,
                       enrich: bool = True,
+                      spiderfoot: bool = False,
                       max_enrich_actors: int = 5) -> dict:
     """Run the full investigation pipeline for `objective`."""
     settings = settings or Settings.load()
@@ -81,6 +82,12 @@ async def investigate(objective: str, settings: Settings | None = None,
                 res = await enrich_host(domain)
                 osint_results.append(res.to_dict())
                 db.save_osint(res.to_dict())
+
+    # 7b. SpiderFoot (opt-in, slow): one automated OSINT scan on the objective.
+    if spiderfoot:
+        res = await enrich_spiderfoot(objective)
+        osint_results.append(res.to_dict())
+        db.save_osint(res.to_dict())
 
     # 8. summary
     findings = db.findings(limit=50)

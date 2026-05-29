@@ -12,5 +12,7 @@ from __future__ import annotations
 from .base import EnrichmentResult
 from .sherlock import enrich_username
 from .shodan import enrich_host
+from .spiderfoot import enrich_spiderfoot
 
-__all__ = ["EnrichmentResult", "enrich_username", "enrich_host"]
+__all__ = ["EnrichmentResult", "enrich_username", "enrich_host",
+           "enrich_spiderfoot"]

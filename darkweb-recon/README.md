@@ -4,8 +4,8 @@ A self-hosted CTI tool that **searches the dark web by name/brand/domain**,
 discovers `.onion` sources over Tor, matches content against a weighted keyword
 taxonomy, extracts threat-actor selectors (handles, Jabber/Tox/Telegram/Session
 IDs, PGP fingerprints, crypto wallets), **pivots those selectors through OSINT
-tools (Sherlock, Shodan, Maltego export)**, and writes an investigation summary
-with an **optional Claude LLM layer**.
+tools (Sherlock, Shodan, SpiderFoot, Maltego export)**, and writes an
+investigation summary with an **optional Claude LLM layer**.
 
 Stack: **Python · FastAPI · httpx · SQLite · zero JS build step.** Runs **fully
 offline in demo mode** so you can trial the entire workflow with zero
@@ -29,7 +29,7 @@ objective ─┐  e.g. "Jane Doe, CEO of Acme" / "acme-corp.com"
  [4] ANALYZE    weighted keyword match + threat scoring + selector extraction
  [5] FILTER     Claude prunes noise, keeps real leads
  [6] STORE      SQLite, deduped by content fingerprint
- [7] ENRICH     pivot top actors' selectors via OSINT (Sherlock, Shodan)
+ [7] ENRICH     pivot actors' selectors via OSINT (Sherlock, Shodan, SpiderFoot)
  [8] SUMMARY    Claude writes the investigation summary
 ```
 
@@ -78,11 +78,16 @@ handles, or wallets.
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # enables query refine / filter / summary (Claude)
 export SHODAN_API_KEY=...             # enables Shodan infra pivots (free key works)
+export SPIDERFOOT_URL=http://127.0.0.1:5001   # a running SpiderFoot instance
 # Sherlock username pivots work out of the box (built-in checker); if the
 # `sherlock` CLI is installed it's used automatically for fuller coverage.
 ```
 
-All three are optional — without them the pipeline still runs deterministically.
+Start SpiderFoot with `python3 sf.py -l 127.0.0.1:5001`, then add `--spiderfoot`
+to an investigation (CLI) or tick the SpiderFoot box (dashboard). It runs one
+automated OSINT scan on the objective — slow (minutes) and opt-in.
+
+All of these are optional — without them the pipeline still runs deterministically.
 
 ---
 
@@ -147,6 +152,7 @@ watchlist:
 |---|---|
 | `python3 cli.py investigate "<name/brand/domain>"` | Search-by-name pipeline |
 | `python3 cli.py investigate "<obj>" --no-enrich` | …without OSINT pivots |
+| `python3 cli.py investigate "<obj>" --spiderfoot` | …also run a SpiderFoot scan |
 | `python3 cli.py scan` | Run one forum scan cycle (mode from `config.yaml`) |
 | `python3 cli.py --live scan` | Force live Tor mode for this run |
 | `python3 cli.py findings --min 15 --confidence high` | List findings |
@@ -202,7 +208,7 @@ darkweb-recon/
     ├── llm.py           # Claude: refine / filter / summary (optional)
     ├── investigate.py   # search-by-name orchestrator (the Robin pipeline)
     ├── scraper.py       # forum-scan orchestrator (collect → analyze → store)
-    ├── osint/           # pivot connectors: sherlock, shodan (+ base)
+    ├── osint/           # pivot connectors: sherlock, shodan, spiderfoot (+ base)
     ├── maltego.py       # Maltego CSV + graph JSON export
     ├── db.py            # SQLite persistence (findings/runs/investigations/osint)
     ├── exporters.py     # JSON / defanged CSV

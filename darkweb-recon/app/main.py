@@ -80,7 +80,9 @@ async def api_investigate(payload: dict = Body(...)) -> dict:
     if not objective:
         return {"error": "objective is required"}
     enrich = bool((payload or {}).get("enrich", True))
-    return await investigate(objective, settings, taxonomy, db, enrich=enrich)
+    spiderfoot = bool((payload or {}).get("spiderfoot", False))
+    return await investigate(objective, settings, taxonomy, db,
+                             enrich=enrich, spiderfoot=spiderfoot)
 
 
 @app.get("/api/investigations")

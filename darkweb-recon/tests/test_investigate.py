@@ -12,6 +12,7 @@ from app.config import Settings, Taxonomy
 from app.db import Database
 from app.discovery import _extract_onion, discover
 from app.investigate import investigate
+from app.osint import enrich_spiderfoot
 
 
 class TestLLMDegradation(unittest.TestCase):
@@ -78,6 +79,27 @@ class TestInvestigateDemo(unittest.TestCase):
         # Investigation was persisted.
         self.assertTrue(db.investigations())
         os.unlink(tmp.name)
+
+
+class TestSpiderFoot(unittest.TestCase):
+    def test_skips_without_url(self):
+        saved = os.environ.pop("SPIDERFOOT_URL", None)
+        try:
+            r = asyncio.run(enrich_spiderfoot("acme-corp.com"))
+            self.assertFalse(r.ok)
+            self.assertIn("SPIDERFOOT_URL", r.note)
+            self.assertEqual(r.connector, "spiderfoot")
+            self.assertEqual(r.selector_type, "domain")
+        finally:
+            if saved is not None:
+                os.environ["SPIDERFOOT_URL"] = saved
+
+    def test_target_type_detection(self):
+        from app.osint.spiderfoot import _guess_type
+        self.assertEqual(_guess_type("1.2.3.4"), "ip")
+        self.assertEqual(_guess_type("a@b.com"), "email")
+        self.assertEqual(_guess_type("acme.com"), "domain")
+        self.assertEqual(_guess_type("Jane Doe"), "username/name")
 
 
 class TestMaltegoExport(unittest.TestCase):

@@ -79,6 +79,7 @@
         <input type="text" id="objective" placeholder="e.g. Jane Doe, CEO of Acme Corp  /  acme-corp.com"
                style="flex:1;min-width:280px" />
         <label class="muted"><input type="checkbox" id="enrich" checked /> OSINT pivot</label>
+        <label class="muted"><input type="checkbox" id="spiderfoot" /> SpiderFoot</label>
         <button class="primary" id="investigatebtn">▶ INVESTIGATE</button>
         <span id="invstatus"></span>
       </div>
@@ -135,7 +136,7 @@
   </div>
 
   <div class="panel" id="osint-panel" style="display:none">
-    <h2>osint pivots — sherlock (usernames) · shodan (infra)</h2>
+    <h2>osint pivots — sherlock (usernames) · shodan (infra) · spiderfoot</h2>
     <div class="body scroll" id="osint-body"></div>
   </div>
 
@@ -233,7 +234,7 @@ $('#investigatebtn').onclick = async () => {
   try{
     const r = await (await fetch('/api/investigate',{
       method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({objective, enrich:$('#enrich').checked})
+      body:JSON.stringify({objective, enrich:$('#enrich').checked, spiderfoot:$('#spiderfoot').checked})
     })).json();
     if(r.error){ $('#invstatus').textContent='error: '+r.error; }
     else{
