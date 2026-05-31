@@ -22,7 +22,8 @@ from .config import Settings, Taxonomy
 from .db import Database
 from .discovery import discover
 from .matcher import analyze_many
-from .osint import enrich_host, enrich_spiderfoot, enrich_username
+from .osint import (enrich_host, enrich_spiderfoot, enrich_username,
+                    enrich_virustotal)
 from .scrape import scrape_multiple
 
 
@@ -79,9 +80,10 @@ async def investigate(objective: str, settings: Settings | None = None,
             # emails carry domains we can pivot)
             for email in sels.get("email", [])[:2]:
                 domain = email.split("@", 1)[-1]
-                res = await enrich_host(domain)
-                osint_results.append(res.to_dict())
-                db.save_osint(res.to_dict())
+                for fn in (enrich_host, enrich_virustotal):
+                    res = await fn(domain)
+                    osint_results.append(res.to_dict())
+                    db.save_osint(res.to_dict())
 
     # 7b. SpiderFoot (opt-in, slow): one automated OSINT scan on the objective.
     if spiderfoot:

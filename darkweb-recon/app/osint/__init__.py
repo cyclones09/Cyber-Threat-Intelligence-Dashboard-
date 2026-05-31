@@ -13,6 +13,7 @@ from .base import EnrichmentResult
 from .sherlock import enrich_username
 from .shodan import enrich_host
 from .spiderfoot import enrich_spiderfoot
+from .virustotal import enrich_virustotal
 
 __all__ = ["EnrichmentResult", "enrich_username", "enrich_host",
-           "enrich_spiderfoot"]
+           "enrich_spiderfoot", "enrich_virustotal"]

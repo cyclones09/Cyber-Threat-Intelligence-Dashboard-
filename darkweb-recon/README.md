@@ -4,7 +4,7 @@ A self-hosted CTI tool that **searches the dark web by name/brand/domain**,
 discovers `.onion` sources over Tor, matches content against a weighted keyword
 taxonomy, extracts threat-actor selectors (handles, Jabber/Tox/Telegram/Session
 IDs, PGP fingerprints, crypto wallets), **pivots those selectors through OSINT
-tools (Sherlock, Shodan, SpiderFoot, Maltego export)**, and writes an
+tools (Sherlock, Shodan, VirusTotal, SpiderFoot, Maltego export)**, and writes an
 investigation summary with an **optional Claude LLM layer**.
 
 Stack: **Python · FastAPI · httpx · SQLite · zero JS build step.** Runs **fully
@@ -78,6 +78,7 @@ handles, or wallets.
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...   # enables query refine / filter / summary (Claude)
 export SHODAN_API_KEY=...             # enables Shodan infra pivots (free key works)
+export VIRUSTOTAL_API_KEY=...         # enables VirusTotal reputation lookups (free key works)
 export SPIDERFOOT_URL=http://127.0.0.1:5001   # a running SpiderFoot instance
 # Sherlock username pivots work out of the box (built-in checker); if the
 # `sherlock` CLI is installed it's used automatically for fuller coverage.

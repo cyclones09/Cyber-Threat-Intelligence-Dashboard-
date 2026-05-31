@@ -12,7 +12,7 @@ from app.config import Settings, Taxonomy
 from app.db import Database
 from app.discovery import _extract_onion, discover
 from app.investigate import investigate
-from app.osint import enrich_spiderfoot
+from app.osint import enrich_spiderfoot, enrich_virustotal
 
 
 class TestLLMDegradation(unittest.TestCase):
@@ -100,6 +100,25 @@ class TestSpiderFoot(unittest.TestCase):
         self.assertEqual(_guess_type("a@b.com"), "email")
         self.assertEqual(_guess_type("acme.com"), "domain")
         self.assertEqual(_guess_type("Jane Doe"), "username/name")
+
+
+class TestVirusTotal(unittest.TestCase):
+    def test_skips_without_key(self):
+        saved = os.environ.pop("VIRUSTOTAL_API_KEY", None)
+        try:
+            r = asyncio.run(enrich_virustotal("acme-corp.com"))
+            self.assertFalse(r.ok)
+            self.assertIn("VIRUSTOTAL_API_KEY", r.note)
+            self.assertEqual(r.connector, "virustotal")
+        finally:
+            if saved is not None:
+                os.environ["VIRUSTOTAL_API_KEY"] = saved
+
+    def test_indicator_type_detection(self):
+        from app.osint.virustotal import _endpoint
+        self.assertEqual(_endpoint("1.2.3.4")[1], "ip")
+        self.assertEqual(_endpoint("acme.com")[1], "domain")
+        self.assertEqual(_endpoint("a" * 64)[1], "hash")
 
 
 class TestMaltegoExport(unittest.TestCase):
