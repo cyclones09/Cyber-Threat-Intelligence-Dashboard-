@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OBSIDIAN // dark web forum recon</title>
+<style>
+  :root{
+    --bg:#06080c; --panel:#0b1016; --panel2:#0e151d; --line:#16222e;
+    --txt:#c7d3dd; --dim:#5d7385; --cyan:#37e0d8; --cyan2:#1f9b9b;
+    --amber:#f5a623; --red:#ff4d5e; --green:#3ddc84; --mag:#c77dff;
+    --mono:'SFMono-Regular',Consolas,'Liberation Mono',Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--mono);
+    font-size:13px;line-height:1.5}
+  a{color:var(--cyan);text-decoration:none}
+  header{border-bottom:1px solid var(--line);padding:14px 20px;display:flex;
+    align-items:baseline;gap:16px;flex-wrap:wrap}
+  header h1{margin:0;font-size:18px;letter-spacing:3px;color:var(--cyan)}
+  header .sub{color:var(--dim);font-size:11px;letter-spacing:1px}
+  .badge{margin-left:auto;font-size:11px;color:var(--dim)}
+  .wrap{padding:18px 20px;max-width:1400px;margin:0 auto}
+  .row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:4px;
+    flex:1;min-width:200px}
+  .panel h2{margin:0;padding:9px 12px;font-size:11px;letter-spacing:2px;
+    color:var(--cyan2);border-bottom:1px solid var(--line);text-transform:uppercase}
+  .panel .body{padding:12px}
+  .kpi{font-size:30px;color:var(--cyan);font-weight:600}
+  .kpi.amber{color:var(--amber)} .kpi.red{color:var(--red)}
+  .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  button,select,input{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:3px;padding:7px 12px;font-family:var(--mono);font-size:12px;cursor:pointer}
+  button:hover{border-color:var(--cyan2);color:var(--cyan)}
+  button.primary{background:var(--cyan2);color:#02110f;border-color:var(--cyan)}
+  button.primary:hover{background:var(--cyan);color:#02110f}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{text-align:left;color:var(--dim);font-weight:500;padding:7px 8px;
+    border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel);
+    text-transform:uppercase;letter-spacing:1px;font-size:10px}
+  td{padding:8px;border-bottom:1px solid #0f1820;vertical-align:top}
+  tr:hover td{background:#0c141c}
+  .score{font-weight:700;font-size:14px}
+  .pill{display:inline-block;padding:1px 7px;border-radius:10px;font-size:10px;
+    border:1px solid var(--line);margin:1px 2px 1px 0;color:var(--dim)}
+  .pill.cat{border-color:var(--cyan2);color:var(--cyan)}
+  .pill.watch{border-color:var(--amber);color:var(--amber)}
+  .conf-high{color:var(--red);font-weight:700}
+  .conf-medium{color:var(--amber)} .conf-low{color:var(--dim)}
+  .sel{color:var(--mag);font-size:11px;word-break:break-all}
+  .sel b{color:var(--dim);font-weight:500}
+  .muted{color:var(--dim)}
+  .tabs{display:flex;gap:4px;margin-bottom:14px}
+  .tabs button{border-bottom:2px solid transparent}
+  .tabs button.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+  .scroll{max-height:62vh;overflow:auto}
+  #status{font-size:11px;color:var(--dim);margin-left:8px}
+  .actor-card{border:1px solid var(--line);border-radius:4px;padding:10px;margin-bottom:8px;
+    background:var(--panel2)}
+  .actor-card .name{color:var(--cyan);font-size:14px;font-weight:600}
+  .legal{margin-top:20px;padding:10px;border:1px dashed var(--line);color:var(--dim);
+    font-size:11px;border-radius:4px}
+</style>
+</head>
+<body>
+<header>
+  <h1>◆ OBSIDIAN</h1>
+  <span class="sub">DARK WEB OSINT · THREAT-ACTOR DISCOVERY</span>
+  <span class="badge" id="torbadge">tor: checking…</span>
+  <span class="badge" id="llmbadge" style="margin-left:12px">llm: …</span>
+</header>
+
+<div class="wrap">
+  <div class="panel" style="margin-bottom:14px">
+    <h2>investigate — search dark web by name / brand / domain</h2>
+    <div class="body">
+      <div class="controls" style="margin-bottom:0">
+        <input type="text" id="objective" placeholder="e.g. Jane Doe, CEO of Acme Corp  /  acme-corp.com"
+               style="flex:1;min-width:280px" />
+        <label class="muted"><input type="checkbox" id="enrich" checked /> OSINT pivot</label>
+        <label class="muted"><input type="checkbox" id="spiderfoot" /> SpiderFoot</label>
+        <button class="primary" id="investigatebtn">▶ INVESTIGATE</button>
+        <span id="invstatus"></span>
+      </div>
+      <div id="invresult" style="display:none;margin-top:12px">
+        <div class="muted" id="invmeta"></div>
+        <div id="invsummary" style="margin-top:8px;white-space:pre-wrap"></div>
+        <div id="invsources" style="margin-top:8px"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row" id="kpis"></div>
+
+  <div class="controls">
+    <button class="primary" id="scanbtn">▶ RUN SCAN</button>
+    <label class="muted">min score
+      <input type="number" id="minscore" value="0" style="width:70px" />
+    </label>
+    <label class="muted">confidence
+      <select id="conf">
+        <option value="">any</option><option>high</option>
+        <option>medium</option><option>low</option>
+      </select>
+    </label>
+    <button id="refresh">⟳ REFRESH</button>
+    <a id="json" href="/api/export/json" download>EXPORT JSON</a>
+    <a id="csv" href="/api/export/csv" download>EXPORT IOC CSV</a>
+    <a id="maltego" href="/api/export/maltego" download>EXPORT MALTEGO</a>
+    <span id="status"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="active" data-tab="findings">FINDINGS</button>
+    <button data-tab="actors">THREAT ACTORS</button>
+    <button data-tab="osint">OSINT PIVOTS</button>
+  </div>
+
+  <div class="panel" id="findings-panel">
+    <h2>findings — ranked by threat score</h2>
+    <div class="body scroll">
+      <table>
+        <thead><tr>
+          <th>score</th><th>conf</th><th>source</th><th>author</th>
+          <th>title / categories</th><th>selectors</th>
+        </tr></thead>
+        <tbody id="findings-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="actors-panel" style="display:none">
+    <h2>threat-actor leaderboard</h2>
+    <div class="body scroll" id="actors-body"></div>
+  </div>
+
+  <div class="panel" id="osint-panel" style="display:none">
+    <h2>osint pivots — sherlock · shodan · virustotal · spiderfoot</h2>
+    <div class="body scroll" id="osint-body"></div>
+  </div>
+
+  <div class="legal">
+    ⚠ AUTHORIZED DEFENSIVE THREAT-INTELLIGENCE USE ONLY. Operating this tool may
+    require legal authorization in your jurisdiction. Do not interact with,
+    purchase from, or solicit illegal goods/services. Findings are investigative
+    leads, not verified facts. See README for OPSEC and legal guidance.
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => (s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function loadKpis(){
+  const s = await (await fetch('/api/stats')).json();
+  $('#kpis').innerHTML = `
+    ${kpi('FINDINGS', s.findings)}
+    ${kpi('HIGH CONF', s.high_confidence, 'red')}
+    ${kpi('WATCHLIST', s.watchlist_hits, 'amber')}
+    ${kpi('ACTORS', s.actors)}
+    ${kpi('SCANS', s.runs)}`;
+}
+const kpi = (label,val,cls='') =>
+  `<div class="panel"><h2>${label}</h2><div class="body"><div class="kpi ${cls}">${val}</div></div></div>`;
+
+async function loadTor(){
+  try{
+    const t = await (await fetch('/api/tor')).json();
+    $('#torbadge').textContent = t.demo ? 'mode: DEMO (offline fixtures)'
+      : (t.ok ? `tor: OK · exit ${t.exit_ip||'?'}` : `tor: DOWN · ${t.reason||''}`);
+    $('#torbadge').style.color = t.demo ? 'var(--amber)' : (t.ok?'var(--green)':'var(--red)');
+  }catch(e){ $('#torbadge').textContent='tor: error'; }
+}
+
+function selectorsHtml(sel){
+  return Object.entries(sel||{}).map(([k,v]) =>
+    `<div class="sel"><b>${esc(k)}:</b> ${v.map(esc).join(', ')}</div>`).join('') || '<span class="muted">—</span>';
+}
+
+async function loadFindings(){
+  const ms = $('#minscore').value||0, cf = $('#conf').value;
+  const q = new URLSearchParams({min_score:ms}); if(cf) q.set('confidence',cf);
+  const data = await (await fetch('/api/findings?'+q)).json();
+  $('#findings-body').innerHTML = data.findings.map(f => `
+    <tr>
+      <td class="score">${f.score}</td>
+      <td class="conf-${f.confidence}">${f.confidence}</td>
+      <td>${esc(f.source)}</td>
+      <td>${esc(f.author)}</td>
+      <td>
+        <div>${esc(f.title)}</div>
+        <div>${f.categories.map(c=>`<span class="pill cat">${esc(c)}</span>`).join('')}
+        ${f.watchlist_hits.map(c=>`<span class="pill watch">⚠ ${esc(c)}</span>`).join('')}</div>
+      </td>
+      <td>${selectorsHtml(f.selectors)}</td>
+    </tr>`).join('') || '<tr><td colspan="6" class="muted">no findings — run a scan</td></tr>';
+}
+
+async function loadActors(){
+  const data = await (await fetch('/api/actors')).json();
+  $('#actors-body').innerHTML = data.actors.map(a => `
+    <div class="actor-card">
+      <div><span class="name">${esc(a.author)}</span>
+        <span class="muted"> · ${a.posts} posts · max score ${a.max_score} · ${a.sources.join(', ')}</span></div>
+      <div>${Object.entries(a.categories).map(([c,n])=>`<span class="pill cat">${esc(c)} ×${n}</span>`).join('')}</div>
+      ${Object.keys(a.selectors).length?`<div style="margin-top:6px">${selectorsHtml(a.selectors)}</div>`:''}
+    </div>`).join('') || '<span class="muted">no actors yet</span>';
+}
+
+async function loadOsint(){
+  const data = await (await fetch('/api/osint')).json();
+  $('#osint-body').innerHTML = data.results.map(r => `
+    <div class="actor-card">
+      <div><span class="name">${esc(r.connector)}</span>
+        <span class="muted"> · ${esc(r.selector_type)}: ${esc(r.selector_value)} · ${esc(r.note)}</span></div>
+      ${(r.findings||[]).map(f=>`<div class="sel">${esc(JSON.stringify(f))}</div>`).join('')}
+    </div>`).join('') || '<span class="muted">no OSINT pivots yet — run an investigation with OSINT enabled</span>';
+}
+
+async function loadLlm(){
+  try{
+    const l = await (await fetch('/api/llm')).json();
+    $('#llmbadge').textContent = l.available ? `llm: ${l.model}` : 'llm: off (no API key)';
+    $('#llmbadge').style.color = l.available ? 'var(--green)' : 'var(--dim)';
+  }catch(e){ $('#llmbadge').textContent='llm: ?'; }
+}
+
+$('#investigatebtn').onclick = async () => {
+  const objective = $('#objective').value.trim();
+  if(!objective){ $('#invstatus').textContent='enter an objective'; return; }
+  $('#invstatus').textContent='investigating… (discover → scrape → analyze → enrich)';
+  $('#investigatebtn').disabled = true;
+  try{
+    const r = await (await fetch('/api/investigate',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({objective, enrich:$('#enrich').checked, spiderfoot:$('#spiderfoot').checked})
+    })).json();
+    if(r.error){ $('#invstatus').textContent='error: '+r.error; }
+    else{
+      $('#invstatus').textContent =
+        `done · ${r.discovered} discovered · ${r.scraped} scraped · ${r.matched} matched · ${r.new_findings} new`;
+      $('#invresult').style.display='';
+      $('#invmeta').textContent =
+        `refined: ${r.refined_queries.join(' | ')}  (llm ${r.llm_enabled?'on':'off'})`;
+      $('#invsummary').textContent = r.summary;
+      $('#invsources').innerHTML = '<b class="muted">SOURCE LINKS:</b><br>' +
+        (r.source_links||[]).map(u=>`<div class="sel">${esc(u)}</div>`).join('');
+    }
+  }catch(e){ $('#invstatus').textContent='error: '+e; }
+  $('#investigatebtn').disabled = false;
+  loadKpis(); loadFindings(); loadActors(); loadOsint();
+};
+
+$('#scanbtn').onclick = async () => {
+  $('#status').textContent = 'scanning…'; $('#scanbtn').disabled = true;
+  try{
+    const r = await (await fetch('/api/scan',{method:'POST'})).json();
+    $('#status').textContent = `done · ${r.posts_seen} posts · ${r.matched} matched · ${r.new_findings} new`;
+  }catch(e){ $('#status').textContent = 'scan error: '+e; }
+  $('#scanbtn').disabled = false;
+  loadKpis(); loadFindings(); loadActors();
+};
+$('#refresh').onclick = () => { loadKpis(); loadFindings(); loadActors(); loadOsint(); };
+$('#minscore').onchange = loadFindings; $('#conf').onchange = loadFindings;
+
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  const t = b.dataset.tab;
+  $('#findings-panel').style.display = t==='findings'?'':'none';
+  $('#actors-panel').style.display = t==='actors'?'':'none';
+  $('#osint-panel').style.display = t==='osint'?'':'none';
+});
+
+loadTor(); loadLlm(); loadKpis(); loadFindings(); loadActors(); loadOsint();
+</script>
+</body>
+</html>

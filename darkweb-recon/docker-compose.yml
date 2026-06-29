@@ -1,0 +1,27 @@
+# OBSIDIAN — one-command deploy.  Run:  docker compose up --build
+#
+# Reachable at http://127.0.0.1:8000 on the host. By default the dashboard is
+# only published to localhost — DO NOT expose this port publicly. It is an
+# investigative tool with no built-in auth; keep it behind a VPN/SSH tunnel and
+# run it on a machine you control.
+services:
+  obsidian:
+    build: .
+    # 127.0.0.1: prefix keeps the dashboard local-only. Remove it only if you
+    # have your own auth/firewall in front.
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      # "true"  -> offline demo (no Tor, works instantly)
+      # "false" -> live: starts Tor and scans real sources from sources.yaml
+      OBSIDIAN_DEMO_MODE: "true"
+      # Optional capabilities (uncomment + set to enable):
+      # ANTHROPIC_API_KEY: "sk-ant-..."     # Claude refine/filter/summary
+      # SHODAN_API_KEY: "..."               # Shodan infra pivots
+      # VIRUSTOTAL_API_KEY: "..."           # VirusTotal reputation lookups
+      # SPIDERFOOT_URL: "http://host.docker.internal:5001"
+    volumes:
+      - obsidian-data:/data        # persists the SQLite database across restarts
+
+volumes:
+  obsidian-data:

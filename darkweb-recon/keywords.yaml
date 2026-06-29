@@ -1,0 +1,107 @@
+# OBSIDIAN keyword taxonomy
+# ---------------------------------------------------------------------------
+# Each category has a weight (contribution to a post's threat score) and a list
+# of patterns. Patterns are matched case-insensitively. A pattern is treated as
+# a regex if it contains regex metacharacters; otherwise it is a whole-word
+# substring match. Edit freely — this is the heart of the engine's relevance.
+# ---------------------------------------------------------------------------
+
+categories:
+  initial_access:
+    weight: 10
+    description: "Initial access brokers selling footholds into corporate networks."
+    patterns:
+      - "selling access"
+      - "corporate access"
+      - "rdp access"
+      - "vpn access"
+      - "domain admin"
+      - "initial access"
+      - "fortinet vpn"
+      - "citrix"
+      - "\\bIAB\\b"
+      - "shell access"
+      - "webshell"
+
+  ransomware:
+    weight: 9
+    description: "Ransomware operations, affiliates, and RaaS recruitment."
+    patterns:
+      - "ransomware"
+      - "\\bRaaS\\b"
+      - "affiliate program"
+      - "encryptor"
+      - "locker build"
+      - "lockbit"
+      - "alphv"
+      - "blackcat"
+      - "akira"
+      - "cl0p"
+      - "negotiat(?:e|or|ion)"
+
+  data_sale:
+    weight: 8
+    description: "Sale of breached databases, PII, and financial data."
+    patterns:
+      - "database leak"
+      - "\\bfullz\\b"
+      - "\\bdump\\b"
+      - "combolist"
+      - "\\bSSN\\b"
+      - "credit card"
+      - "\\bCVV\\b"
+      - "fresh base"
+      - "leaked db"
+      - "\\bPII\\b"
+
+  credentials:
+    weight: 7
+    description: "Stealer logs, credential dumps, and session/cookie theft."
+    patterns:
+      - "stealer logs"
+      - "redline"
+      - "raccoon"
+      - "lumma"
+      - "\\bULP\\b"
+      - "cookies for sale"
+      - "session token"
+      - "credential dump"
+      - "\\bcombo\\b"
+
+  malware_dev:
+    weight: 7
+    description: "Exploit, loader, crypter, and C2 development/sales."
+    patterns:
+      - "0day"
+      - "zero[- ]day"
+      - "\\bexploit\\b"
+      - "\\bloader\\b"
+      - "\\bcrypter\\b"
+      - "\\bFUD\\b"
+      - "\\bC2\\b"
+      - "command and control"
+      - "rootkit"
+      - "bootkit"
+
+  recruitment:
+    weight: 5
+    description: "Crews recruiting partners, pentesters, money mules."
+    patterns:
+      - "looking for partner"
+      - "pentester wanted"
+      - "now hiring"
+      - "recruiting"
+      - "money mule"
+      - "need a coder"
+      - "team needs"
+
+# Target watchlist — organisations, brands, sectors, or domains you protect.
+# Hits here are high-signal because they mean YOUR estate is being discussed.
+# Each match adds `watchlist_weight` to the score and flags the post.
+watchlist_weight: 12
+watchlist:
+  - "acme corp"
+  - "acme-corp.com"
+  - "contoso"
+  - "northwind"
+  - "your-company.com"

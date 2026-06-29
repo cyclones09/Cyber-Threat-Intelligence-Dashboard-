@@ -1,0 +1,37 @@
+# OBSIDIAN configuration
+# ---------------------------------------------------------------------------
+# All settings here can be overridden by environment variables prefixed with
+# OBSIDIAN_  (e.g. OBSIDIAN_TOR_PROXY=socks5h://127.0.0.1:9150).
+# ---------------------------------------------------------------------------
+
+# Tor SOCKS proxy. The default 9050 is the Tor daemon; 9150 is Tor Browser.
+# All .onion traffic is routed through this proxy. socks5h:// makes Tor do the
+# DNS resolution (required for .onion addresses).
+tor_proxy: "socks5h://127.0.0.1:9050"
+
+# Per-request timeout in seconds. Onion services are slow; be patient.
+request_timeout: 60
+
+# Politeness: seconds to wait between requests to the same source. Keeps a low
+# profile and avoids hammering fragile hidden services.
+request_delay: 4.0
+
+# Max forum threads/pages to pull per source per run.
+max_pages_per_source: 25
+
+# Rotate the Tor circuit (NEWNYM) after this many requests. Requires the Tor
+# control port to be enabled. Set to 0 to disable.
+circuit_rotation_every: 0
+tor_control_port: 9051
+tor_control_password: ""
+
+# Run without Tor against bundled offline fixtures. Lets you trial the whole
+# pipeline (matching, scoring, extraction, dashboard) with zero infrastructure.
+demo_mode: true
+
+# SQLite database location (relative to project root).
+database: "obsidian.db"
+
+# User-Agent presented to forum HTTP servers. A generic Tor Browser string
+# blends in better than a Python default.
+user_agent: "Mozilla/5.0 (Windows NT 10.0; rv:115.0) Gecko/20100101 Firefox/115.0"
