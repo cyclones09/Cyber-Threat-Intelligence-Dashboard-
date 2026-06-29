@@ -18,6 +18,7 @@ services:
       # Optional capabilities (uncomment + set to enable):
       # ANTHROPIC_API_KEY: "sk-ant-..."     # Claude refine/filter/summary
       # SHODAN_API_KEY: "..."               # Shodan infra pivots
+      # VIRUSTOTAL_API_KEY: "..."           # VirusTotal reputation lookups
       # SPIDERFOOT_URL: "http://host.docker.internal:5001"
     volumes:
       - obsidian-data:/data        # persists the SQLite database across restarts
